@@ -27,3 +27,17 @@ doc/api/
 
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# Platform build outputs (se generan al correr `flutter create .`)
+android/local.properties
+ios/Flutter/Flutter.podspec
+ios/Pods/
+**/Pods/
