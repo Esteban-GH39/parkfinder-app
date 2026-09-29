@@ -8,7 +8,7 @@ import '../models/cliente.dart';
 class ApiService {
   Future<Map<String, dynamic>> registrarCliente(Cliente cliente) async {
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/clientes/registro');
+      final url = Uri.parse('${ApiConfig.baseUrl}/clientes');
       print('DEBUG: Enviando POST a $url');
       print('DEBUG: Body enviado: ${jsonEncode(cliente.toJson())}');
 
