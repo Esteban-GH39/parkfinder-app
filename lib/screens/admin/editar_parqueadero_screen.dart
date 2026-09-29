@@ -32,39 +32,43 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
   late final _nombreCtrl = TextEditingController(
     text: widget.parqueadero.nombre,
   );
-  late final _zonaCtrl = TextEditingController(text: widget.parqueadero.zona);
+  late final _ubicacionCtrl = TextEditingController(
+    text: widget.parqueadero.ubicacion,
+  );
   late final _direccionCtrl = TextEditingController(
     text: widget.parqueadero.direccion,
   );
-  late final _representanteCtrl = TextEditingController(
-    text: widget.parqueadero.representante,
+  late final _propietarioCtrl = TextEditingController(
+    text: widget.parqueadero.nombrePropietario,
   );
   late final _capacidadCtrl = TextEditingController(
     text: widget.parqueadero.capacidadTotal?.toString() ?? '',
   );
-  late final _ocupadosCtrl = TextEditingController(
-    text: widget.parqueadero.cuposOcupados?.toString() ?? '',
+  late final _tarifaCtrl = TextEditingController(
+    text: widget.parqueadero.tarifa?.toString() ?? '',
   );
-  late final _tarifaHoraCtrl = TextEditingController(
-    text: widget.parqueadero.tarifaHora?.toString() ?? '',
+  late final _horaInicioCtrl = TextEditingController(
+    text: widget.parqueadero.horaInicio ?? '',
   );
-  late final _tarifaDiaCtrl = TextEditingController(
-    text: widget.parqueadero.tarifaDia?.toString() ?? '',
+  late final _horaFinCtrl = TextEditingController(
+    text: widget.parqueadero.horaFin ?? '',
   );
 
   bool _guardando = false;
   String? _errorMensaje;
 
+  static final _formatoHora = RegExp(r'^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$');
+
   @override
   void dispose() {
     _nombreCtrl.dispose();
-    _zonaCtrl.dispose();
+    _ubicacionCtrl.dispose();
     _direccionCtrl.dispose();
-    _representanteCtrl.dispose();
+    _propietarioCtrl.dispose();
     _capacidadCtrl.dispose();
-    _ocupadosCtrl.dispose();
-    _tarifaHoraCtrl.dispose();
-    _tarifaDiaCtrl.dispose();
+    _tarifaCtrl.dispose();
+    _horaInicioCtrl.dispose();
+    _horaFinCtrl.dispose();
     super.dispose();
   }
 
@@ -76,15 +80,19 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
       _errorMensaje = null;
     });
 
+    // Los nombres de estas claves son los que espera ParqueaderoActualizarDto
+    // en el backend, que no son los mismos que los de la entidad: "capacidad"
+    // (no "capacidadTotal") y "horaFinal" (no "horaFin"). Un campo vacío se
+    // envía como null, para que el backend lo interprete como "no cambiar".
     final campos = {
-      'nombre': _nombreCtrl.text.trim(),
-      'zona': _zonaCtrl.text.trim(),
-      'direccion': _direccionCtrl.text.trim(),
-      'representante': _representanteCtrl.text.trim(),
-      'capacidadTotal': int.tryParse(_capacidadCtrl.text),
-      'cuposOcupados': int.tryParse(_ocupadosCtrl.text),
-      'tarifaHora': double.tryParse(_tarifaHoraCtrl.text),
-      'tarifaDia': double.tryParse(_tarifaDiaCtrl.text),
+      'nombre': _nuloSiVacio(_nombreCtrl.text),
+      'direccion': _nuloSiVacio(_direccionCtrl.text),
+      'ubicacion': _nuloSiVacio(_ubicacionCtrl.text),
+      'nombrePropietario': _nuloSiVacio(_propietarioCtrl.text),
+      'capacidad': int.tryParse(_capacidadCtrl.text),
+      'tarifa': double.tryParse(_tarifaCtrl.text),
+      'horaInicio': _nuloSiVacio(_horaInicioCtrl.text),
+      'horaFinal': _nuloSiVacio(_horaFinCtrl.text),
     };
 
     final resultado = await _apiService.actualizarParqueadero(
@@ -96,7 +104,9 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
     setState(() => _guardando = false);
 
     if (resultado['success'] == true) {
-      final cambios = resultado['data']?['cambiosRegistrados'];
+      final cambios = resultado['data'] is List
+          ? (resultado['data'] as List).length
+          : 0;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -111,6 +121,11 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
     }
   }
 
+  String? _nuloSiVacio(String texto) {
+    final limpio = texto.trim();
+    return limpio.isEmpty ? null : limpio;
+  }
+
   void _verHistorial() {
     Navigator.push(
       context,
@@ -121,21 +136,6 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
         ),
       ),
     );
-  }
-
-  /// La ocupación nunca puede superar la capacidad: la misma regla que valida
-  /// el backend, adelantada acá para avisar antes de enviar.
-  String? _validarOcupados(String? valor) {
-    if (valor == null || valor.isEmpty) return null;
-    final ocupados = int.tryParse(valor);
-    if (ocupados == null) return 'Debe ser un número';
-    if (ocupados < 0) return 'No puede ser negativo';
-
-    final capacidad = int.tryParse(_capacidadCtrl.text);
-    if (capacidad != null && ocupados > capacidad) {
-      return 'No puede superar la capacidad ($capacidad)';
-    }
-    return null;
   }
 
   String? _validarEnteroNoNegativo(String? valor) {
@@ -151,6 +151,12 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
     final numero = double.tryParse(valor);
     if (numero == null) return 'Debe ser un número';
     if (numero < 0) return 'No puede ser negativo';
+    return null;
+  }
+
+  String? _validarHora(String? valor) {
+    if (valor == null || valor.isEmpty) return null;
+    if (!_formatoHora.hasMatch(valor)) return 'Formato esperado: HH:mm';
     return null;
   }
 
@@ -181,16 +187,16 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
                     (v == null || v.trim().isEmpty) ? 'Requerido' : null,
               ),
               TextFormField(
-                controller: _zonaCtrl,
-                decoration: const InputDecoration(labelText: 'Zona'),
+                controller: _ubicacionCtrl,
+                decoration: const InputDecoration(labelText: 'Ubicación'),
               ),
               TextFormField(
                 controller: _direccionCtrl,
                 decoration: const InputDecoration(labelText: 'Dirección'),
               ),
               TextFormField(
-                controller: _representanteCtrl,
-                decoration: const InputDecoration(labelText: 'Representante'),
+                controller: _propietarioCtrl,
+                decoration: const InputDecoration(labelText: 'Propietario'),
               ),
               TextFormField(
                 controller: _capacidadCtrl,
@@ -199,22 +205,26 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
                 validator: _validarEnteroNoNegativo,
               ),
               TextFormField(
-                controller: _ocupadosCtrl,
-                decoration: const InputDecoration(labelText: 'Cupos ocupados'),
-                keyboardType: TextInputType.number,
-                validator: _validarOcupados,
-              ),
-              TextFormField(
-                controller: _tarifaHoraCtrl,
-                decoration: const InputDecoration(labelText: 'Tarifa por hora'),
+                controller: _tarifaCtrl,
+                decoration: const InputDecoration(labelText: 'Tarifa'),
                 keyboardType: TextInputType.number,
                 validator: _validarDecimalNoNegativo,
               ),
               TextFormField(
-                controller: _tarifaDiaCtrl,
-                decoration: const InputDecoration(labelText: 'Tarifa por día'),
-                keyboardType: TextInputType.number,
-                validator: _validarDecimalNoNegativo,
+                controller: _horaInicioCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Hora de inicio',
+                  hintText: 'HH:mm',
+                ),
+                validator: _validarHora,
+              ),
+              TextFormField(
+                controller: _horaFinCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Hora de fin',
+                  hintText: 'HH:mm',
+                ),
+                validator: _validarHora,
               ),
               const SizedBox(height: 20),
               if (_errorMensaje != null)

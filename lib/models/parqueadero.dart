@@ -1,58 +1,39 @@
 class Parqueadero {
   final int id;
   final String nombre;
-  final String zona;
   final String direccion;
-  final String representante;
+  final String ubicacion;
+  final String nombrePropietario;
   final int? capacidadTotal;
-  final int? cuposOcupados;
-  final double? tarifaHora;
-  final double? tarifaDia;
-  final double? latitud;
-  final double? longitud;
+  final double? tarifa;
+  final String? horaInicio;
+  final String? horaFin;
 
   Parqueadero({
     required this.id,
     required this.nombre,
-    required this.zona,
     required this.direccion,
-    required this.representante,
+    required this.ubicacion,
+    required this.nombrePropietario,
     this.capacidadTotal,
-    this.cuposOcupados,
-    this.tarifaHora,
-    this.tarifaDia,
-    this.latitud,
-    this.longitud,
+    this.tarifa,
+    this.horaInicio,
+    this.horaFin,
   });
 
   factory Parqueadero.fromJson(Map<String, dynamic> json) {
     return Parqueadero(
       id: json['id'] as int,
       nombre: json['nombre'] as String? ?? '',
-      zona: json['zona'] as String? ?? '',
       direccion: json['direccion'] as String? ?? '',
-      representante: json['representante'] as String? ?? '',
+      ubicacion: json['ubicacion'] as String? ?? '',
+      nombrePropietario: json['nombrePropietario'] as String? ?? '',
       capacidadTotal: (json['capacidadTotal'] as num?)?.toInt(),
-      cuposOcupados: (json['cuposOcupados'] as num?)?.toInt(),
-      tarifaHora: (json['tarifaHora'] as num?)?.toDouble(),
-      tarifaDia: (json['tarifaDia'] as num?)?.toDouble(),
-      latitud: (json['latitud'] as num?)?.toDouble(),
-      longitud: (json['longitud'] as num?)?.toDouble(),
+      tarifa: (json['tarifa'] as num?)?.toDouble(),
+      horaInicio: json['horaInicio'] as String?,
+      horaFin: json['horaFin'] as String?,
     );
   }
-
-  Map<String, dynamic> toJson() => {
-    'nombre': nombre,
-    'zona': zona,
-    'direccion': direccion,
-    'representante': representante,
-    'capacidadTotal': capacidadTotal,
-    'cuposOcupados': cuposOcupados,
-    'tarifaHora': tarifaHora,
-    'tarifaDia': tarifaDia,
-    'latitud': latitud,
-    'longitud': longitud,
-  };
 }
 
 /// Un renglón del historial de trazabilidad de HU-19.

@@ -27,7 +27,9 @@ class _ApiServiceFalso extends ApiService {
     return respuesta ??
         {
           'success': true,
-          'data': {'cambiosRegistrados': 1},
+          'data': [
+            {'campo': 'nombre', 'valorAnterior': 'x', 'valorNuevo': 'y'},
+          ],
         };
   }
 
@@ -38,24 +40,22 @@ class _ApiServiceFalso extends ApiService {
 Parqueadero parqueaderoDePrueba() => Parqueadero(
   id: 7,
   nombre: 'Parqueadero Centro',
-  zona: 'Chapinero',
   direccion: 'Calle 53 #10-20',
-  representante: 'Laura Gómez',
+  ubicacion: 'Chapinero',
+  nombrePropietario: 'Laura Gómez',
   capacidadTotal: 50,
-  cuposOcupados: 20,
-  tarifaHora: 3000,
-  tarifaDia: 20000,
+  tarifa: 3000,
+  horaInicio: '07:00:00',
+  horaFin: '20:00:00',
 );
 
 void main() {
   Future<void> montar(WidgetTester tester, _ApiServiceFalso api) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: EditarParqueaderoScreen(
-          parqueadero: parqueaderoDePrueba(),
-          apiService: api,
-        ),
-      ),
+      MaterialApp(home: EditarParqueaderoScreen(
+        parqueadero: parqueaderoDePrueba(),
+        apiService: api,
+      )),
     );
   }
 
@@ -65,8 +65,10 @@ void main() {
     expect(find.text('Parqueadero Centro'), findsOneWidget);
     expect(find.text('Chapinero'), findsOneWidget);
     expect(find.text('Calle 53 #10-20'), findsOneWidget);
+    expect(find.text('Laura Gómez'), findsOneWidget);
     expect(find.text('50'), findsOneWidget);
-    expect(find.text('20'), findsOneWidget);
+    expect(find.text('07:00:00'), findsOneWidget);
+    expect(find.text('20:00:00'), findsOneWidget);
   });
 
   testWidgets('no permite dejar el nombre vacío', (tester) async {
@@ -81,25 +83,11 @@ void main() {
     expect(api.vecesLlamado, 0, reason: 'no debe llamar al backend si falla la validación');
   });
 
-  testWidgets('no permite cupos ocupados mayores a la capacidad',
-      (tester) async {
+  testWidgets('no permite una capacidad negativa', (tester) async {
     final api = _ApiServiceFalso();
     await montar(tester, api);
 
-    // Capacidad 50, se intentan 80 ocupados.
-    await tester.enterText(find.byType(TextFormField).at(5), '80');
-    await tester.tap(find.text('Guardar cambios'));
-    await tester.pump();
-
-    expect(find.text('No puede superar la capacidad (50)'), findsOneWidget);
-    expect(api.vecesLlamado, 0);
-  });
-
-  testWidgets('rechaza valores negativos en las tarifas', (tester) async {
-    final api = _ApiServiceFalso();
-    await montar(tester, api);
-
-    await tester.enterText(find.byType(TextFormField).at(6), '-100');
+    await tester.enterText(find.byType(TextFormField).at(4), '-10');
     await tester.tap(find.text('Guardar cambios'));
     await tester.pump();
 
@@ -107,27 +95,70 @@ void main() {
     expect(api.vecesLlamado, 0);
   });
 
-  testWidgets('envía los campos editados al backend y confirma', (tester) async {
+  testWidgets('rechaza una tarifa negativa', (tester) async {
     final api = _ApiServiceFalso();
     await montar(tester, api);
 
-    await tester.enterText(find.byType(TextFormField).at(0), 'Parqueadero Norte');
-    await tester.enterText(find.byType(TextFormField).at(6), '3500');
+    await tester.enterText(find.byType(TextFormField).at(5), '-100');
+    await tester.tap(find.text('Guardar cambios'));
+    await tester.pump();
+
+    expect(find.text('No puede ser negativo'), findsOneWidget);
+    expect(api.vecesLlamado, 0);
+  });
+
+  testWidgets('rechaza una hora con formato inválido', (tester) async {
+    final api = _ApiServiceFalso();
+    await montar(tester, api);
+
+    await tester.enterText(find.byType(TextFormField).at(6), '25:99');
+    await tester.tap(find.text('Guardar cambios'));
+    await tester.pump();
+
+    expect(find.text('Formato esperado: HH:mm'), findsOneWidget);
+    expect(api.vecesLlamado, 0);
+  });
+
+  testWidgets(
+    'envía al backend las claves del DTO (capacidad/horaFinal), no las de la entidad',
+    (tester) async {
+      final api = _ApiServiceFalso();
+      await montar(tester, api);
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'Parqueadero Norte');
+      await tester.enterText(find.byType(TextFormField).at(4), '80');
+      await tester.enterText(find.byType(TextFormField).at(5), '3500');
+      await tester.enterText(find.byType(TextFormField).at(6), '08:00');
+      await tester.enterText(find.byType(TextFormField).at(7), '21:00');
+      await tester.tap(find.text('Guardar cambios'));
+      await tester.pumpAndSettle();
+
+      expect(api.idEnviado, 7);
+      expect(api.camposEnviados?['nombre'], 'Parqueadero Norte');
+      // Las claves correctas del DTO de edición: "capacidad" y "horaFinal",
+      // no "capacidadTotal" ni "horaFin" (los nombres de la entidad).
+      expect(api.camposEnviados?['capacidad'], 80);
+      expect(api.camposEnviados?['horaFinal'], '21:00');
+      expect(api.camposEnviados?.containsKey('capacidadTotal'), isFalse);
+      expect(api.camposEnviados?.containsKey('horaFin'), isFalse);
+    },
+  );
+
+  testWidgets('un campo de texto vacío se envía como null, no como cadena vacía',
+      (tester) async {
+    final api = _ApiServiceFalso();
+    await montar(tester, api);
+
+    await tester.enterText(find.byType(TextFormField).at(2), ''); // Dirección
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
 
-    expect(api.idEnviado, 7);
-    expect(api.camposEnviados?['nombre'], 'Parqueadero Norte');
-    expect(api.camposEnviados?['tarifaHora'], 3500);
-    expect(find.textContaining('Parqueadero actualizado'), findsOneWidget);
+    expect(api.camposEnviados?['direccion'], isNull);
   });
 
   testWidgets('avisa cuando no hubo cambios que guardar', (tester) async {
     final api = _ApiServiceFalso(
-      respuesta: {
-        'success': true,
-        'data': {'cambiosRegistrados': 0},
-      },
+      respuesta: {'success': true, 'data': <dynamic>[]},
     );
     await montar(tester, api);
 
@@ -137,11 +168,14 @@ void main() {
     expect(find.text('No hubo cambios que guardar'), findsOneWidget);
   });
 
-  testWidgets('muestra el error que devuelve el backend', (tester) async {
+  testWidgets('muestra el mensaje específico cuando el backend rechaza el cambio (400)',
+      (tester) async {
+    // Formato real de ValidationExceptionMapper: el mensaje útil viene en
+    // error.mensaje, no en el mensaje genérico de más arriba.
     final api = _ApiServiceFalso(
       respuesta: {
         'success': false,
-        'error': 'No existe un parqueadero con id 7',
+        'error': 'capacidad: La capacidad no puede ser negativa',
       },
     );
     await montar(tester, api);
@@ -149,17 +183,20 @@ void main() {
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
 
-    expect(find.text('No existe un parqueadero con id 7'), findsOneWidget);
+    expect(
+      find.text('capacidad: La capacidad no puede ser negativa'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('el historial muestra los cambios registrados', (tester) async {
     final api = _ApiServiceFalso(
       historial: [
         {
-          'campo': 'tarifaHora',
+          'campo': 'tarifa',
           'valorAnterior': '3000.0',
           'valorNuevo': '3500.0',
-          'fecha': '2026-09-21T16:40:00',
+          'fecha': '2026-09-27T18:47:34.661564',
         },
       ],
     );
@@ -169,7 +206,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Historial de cambios'), findsOneWidget);
-    expect(find.text('tarifaHora'), findsOneWidget);
+    expect(find.text('tarifa'), findsOneWidget);
     expect(find.text('3000.0 → 3500.0'), findsOneWidget);
   });
 

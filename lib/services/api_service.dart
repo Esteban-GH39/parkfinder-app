@@ -78,13 +78,30 @@ class ApiService {
       if (response.statusCode == 200) {
         return {'success': true, 'data': body};
       }
-      return {'success': false, 'error': body['error'] ?? 'Error desconocido'};
+      return {'success': false, 'error': _mensajeDeErrorApi(body)};
     } catch (e) {
       return {
         'success': false,
         'error': 'No se pudo conectar con el servidor: $e',
       };
     }
+  }
+
+  /// El backend responde los errores con el formato `ResponseApi`:
+  /// `{"mensaje": "...", "error": {"mensaje": "...", "detalles": [...]}}`.
+  /// `error.mensaje` trae el detalle específico (ej. qué campo falló la
+  /// validación); si no viene, se usa el mensaje genérico de más arriba.
+  String _mensajeDeErrorApi(dynamic body) {
+    if (body is Map<String, dynamic>) {
+      final error = body['error'];
+      if (error is Map && error['mensaje'] is String) {
+        return error['mensaje'] as String;
+      }
+      if (body['mensaje'] is String) {
+        return body['mensaje'] as String;
+      }
+    }
+    return 'Error desconocido';
   }
 
   /// HU-19: historial de trazabilidad de un parqueadero.
