@@ -8,8 +8,12 @@ class Parqueadero {
   final int? cuposOcupados;
   final double? tarifaHora;
   final double? tarifaDia;
+  final double? tarifaNoche;
   final double? latitud;
   final double? longitud;
+  //VARIABLES NUEVAS BASADA EN EL DTO
+  final String? horaInicio;
+  final String? horaFinal;
 
   Parqueadero({
     required this.id,
@@ -21,8 +25,12 @@ class Parqueadero {
     this.cuposOcupados,
     this.tarifaHora,
     this.tarifaDia,
+    this.tarifaNoche,
     this.latitud,
     this.longitud,
+    //VARIABLES NUEVAS BASADA EN EL DTO
+    this.horaInicio,
+    this.horaFinal,
   });
 
   factory Parqueadero.fromJson(Map<String, dynamic> json) {
@@ -36,8 +44,11 @@ class Parqueadero {
       cuposOcupados: (json['cuposOcupados'] as num?)?.toInt(),
       tarifaHora: (json['tarifaHora'] as num?)?.toDouble(),
       tarifaDia: (json['tarifaDia'] as num?)?.toDouble(),
+      tarifaNoche: (json['tarifaNoche'] as num?)?.toDouble(),
       latitud: (json['latitud'] as num?)?.toDouble(),
       longitud: (json['longitud'] as num?)?.toDouble(),
+      horaInicio: json['horaInicio'] as String? ?? '',
+      horaFinal: json['horaFinal'] as String? ?? '',
     );
   }
 
@@ -45,14 +56,35 @@ class Parqueadero {
     'nombre': nombre,
     'zona': zona,
     'direccion': direccion,
-    'representante': representante,
+    'nombrePropietario': representante,
     'capacidadTotal': capacidadTotal,
     'cuposOcupados': cuposOcupados,
     'tarifaHora': tarifaHora,
     'tarifaDia': tarifaDia,
+    'tarifaNoche': tarifaNoche,
     'latitud': latitud,
     'longitud': longitud,
+    //VARIABLES NUEVAS BASADA EN EL DTO
+    'horaInicio': horaInicio,
+    'horaFinal': horaFinal
   };
+
+  // NUEVO: body exacto del ParqueaderoDto del backend
+  Map<String, dynamic> toRegistroJson() => {
+    'nombre': nombre.trim(),
+    'direccion': direccion.trim(),
+    'zona': zona.trim(),
+    'capacidadTotal': capacidadTotal,
+    'tarifaHora': tarifaHora,
+    'tarifaDia': tarifaDia,
+    'tarifaNoche': tarifaNoche,
+    'horaInicio': _horaONull(horaInicio),
+    'horaFinal': _horaONull(horaFinal),
+    'nombrePropietario': representante.trim(),
+  };
+
+  static String? _horaONull(String? h) =>
+      (h == null || h.trim().isEmpty) ? null : h.trim();
 }
 
 /// Un renglón del historial de trazabilidad de HU-19.

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:parkfinder_app/screens/admin/registrar_parqueadero_screen.dart';
 
 import 'screens/cliente/registro_screen.dart';
 
@@ -14,7 +15,7 @@ class ParkFinderApp extends StatelessWidget {
     return MaterialApp(
       title: 'ParkFinder',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const RegistroScreen(),
+      home: const RegistroParqueaderoScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
