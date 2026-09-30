@@ -9,8 +9,6 @@ class ApiService {
   Future<Map<String, dynamic>> registrarCliente(Cliente cliente) async {
     try {
       final url = Uri.parse('${ApiConfig.baseUrl}/clientes');
-      print('DEBUG: Enviando POST a $url');
-      print('DEBUG: Body enviado: ${jsonEncode(cliente.toJson())}');
 
       final response = await http
           .post(
@@ -20,11 +18,10 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('DEBUG: Headers enviados: ${response.request?.headers}');
-
-      print('DEBUG: Status code: ${response.statusCode}');
-      print('DEBUG: Response body: "${response.body}"');
-      print('DEBUG: Response body length: ${response.body.length}');
+      // El backend responde 201 sin cuerpo
+      if (response.statusCode == 201) {
+        return {'success': true};
+      }
 
       if (response.body.isEmpty) {
         return {
@@ -34,13 +31,9 @@ class ApiService {
         };
       }
 
-      final body = jsonDecode(response.body);
-      if (response.statusCode == 201) {
-        return {'success': true, 'data': body};
-      }
-      return {'success': false, 'error': body['error'] ?? 'Error desconocido'};
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      return {'success': false, 'error': _extraerMensaje(body)};
     } catch (e) {
-      print('DEBUG: Excepción capturada: $e');
       return {
         'success': false,
         'error': 'No se pudo conectar con el servidor: $e',
@@ -48,21 +41,34 @@ class ApiService {
     }
   }
 
+  String _extraerMensaje(dynamic body) {
+    if (body is Map) {
+      final error = body['error'];
+      if (error is Map &&
+          error['detalles'] is List &&
+          (error['detalles'] as List).isNotEmpty) {
+        return (error['detalles'] as List).join('\n');
+      }
+      if (body['mensaje'] is String) return body['mensaje'] as String;
+    }
+    return 'Error desconocido';
+  }
+
   Future<List<dynamic>> buscarParqueaderos({String? zona}) async {
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}/parqueaderos').replace(
-        queryParameters: zona != null && zona.isNotEmpty
-            ? {'zona': zona}
+      final uri = Uri.parse('${ApiConfig.baseUrl}/parqueaderos/buscar').replace(
+        queryParameters: (zona != null && zona.trim().isNotEmpty)
+            ? {'zona': zona.trim()}
             : null,
       );
 
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
-      if (response.body.isEmpty) {
+      if (response.statusCode != 200 || response.body.isEmpty) {
         return [];
       }
 
-      return jsonDecode(response.body);
+      return jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
     } catch (e) {
       print('DEBUG: Error al buscar parqueaderos: $e');
       return [];
