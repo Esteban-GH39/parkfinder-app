@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
 import '../models/cliente.dart';
+import '../models/parqueadero.dart';
 
 class ApiService {
   Future<Map<String, dynamic>> registrarCliente(Cliente cliente) async {
@@ -102,6 +103,37 @@ class ApiService {
       }
     }
     return 'Error desconocido';
+  }
+
+  /// HU-19: lista los parqueaderos registrados para elegir cuál editar.
+  ///
+  /// A diferencia de [buscarParqueaderos] (HU-03), distingue entre "no hay
+  /// parqueaderos" y "no se pudo consultar": devuelve
+  /// {'success': true, 'data': `List<Parqueadero>`} o {'success': false, 'error': ...}.
+  Future<Map<String, dynamic>> listarParqueaderos() async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/parqueaderos');
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        return {
+          'success': false,
+          'error': 'No se pudo cargar la lista (status ${response.statusCode})',
+        };
+      }
+      final lista = jsonDecode(response.body) as List<dynamic>;
+      return {
+        'success': true,
+        'data': lista
+            .map((e) => Parqueadero.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'No se pudo conectar con el servidor: $e',
+      };
+    }
   }
 
   /// HU-19: historial de trazabilidad de un parqueadero.
