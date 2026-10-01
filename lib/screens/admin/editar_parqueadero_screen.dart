@@ -32,8 +32,8 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
   late final _nombreCtrl = TextEditingController(
     text: widget.parqueadero.nombre,
   );
-  late final _ubicacionCtrl = TextEditingController(
-    text: widget.parqueadero.ubicacion,
+  late final _zonaCtrl = TextEditingController(
+    text: widget.parqueadero.zona,
   );
   late final _direccionCtrl = TextEditingController(
     text: widget.parqueadero.direccion,
@@ -44,8 +44,14 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
   late final _capacidadCtrl = TextEditingController(
     text: widget.parqueadero.capacidadTotal?.toString() ?? '',
   );
-  late final _tarifaCtrl = TextEditingController(
-    text: widget.parqueadero.tarifa?.toString() ?? '',
+  late final _tarifaHoraCtrl = TextEditingController(
+    text: widget.parqueadero.tarifaHora?.toString() ?? '',
+  );
+  late final _tarifaDiaCtrl = TextEditingController(
+    text: widget.parqueadero.tarifaDia?.toString() ?? '',
+  );
+  late final _tarifaNocheCtrl = TextEditingController(
+    text: widget.parqueadero.tarifaNoche?.toString() ?? '',
   );
   late final _horaInicioCtrl = TextEditingController(
     text: widget.parqueadero.horaInicio ?? '',
@@ -62,11 +68,13 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
   @override
   void dispose() {
     _nombreCtrl.dispose();
-    _ubicacionCtrl.dispose();
+    _zonaCtrl.dispose();
     _direccionCtrl.dispose();
     _propietarioCtrl.dispose();
     _capacidadCtrl.dispose();
-    _tarifaCtrl.dispose();
+    _tarifaHoraCtrl.dispose();
+    _tarifaDiaCtrl.dispose();
+    _tarifaNocheCtrl.dispose();
     _horaInicioCtrl.dispose();
     _horaFinCtrl.dispose();
     super.dispose();
@@ -81,16 +89,18 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
     });
 
     // Los nombres de estas claves son los que espera ParqueaderoActualizarDto
-    // en el backend, que no son los mismos que los de la entidad: "capacidad"
-    // (no "capacidadTotal") y "horaFinal" (no "horaFin"). Un campo vacío se
-    // envía como null, para que el backend lo interprete como "no cambiar".
+    // en el backend, que no son los mismos que los de la entidad en un caso:
+    // "horaFinal" (no "horaFin"). Un campo vacío se envía como null, para que
+    // el backend lo interprete como "no cambiar".
     final campos = {
       'nombre': _nuloSiVacio(_nombreCtrl.text),
       'direccion': _nuloSiVacio(_direccionCtrl.text),
-      'ubicacion': _nuloSiVacio(_ubicacionCtrl.text),
+      'zona': _nuloSiVacio(_zonaCtrl.text),
       'nombrePropietario': _nuloSiVacio(_propietarioCtrl.text),
-      'capacidad': int.tryParse(_capacidadCtrl.text),
-      'tarifa': double.tryParse(_tarifaCtrl.text),
+      'capacidadTotal': int.tryParse(_capacidadCtrl.text),
+      'tarifaHora': double.tryParse(_tarifaHoraCtrl.text),
+      'tarifaDia': double.tryParse(_tarifaDiaCtrl.text),
+      'tarifaNoche': double.tryParse(_tarifaNocheCtrl.text),
       'horaInicio': _nuloSiVacio(_horaInicioCtrl.text),
       'horaFinal': _nuloSiVacio(_horaFinCtrl.text),
     };
@@ -187,8 +197,8 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
                     (v == null || v.trim().isEmpty) ? 'Requerido' : null,
               ),
               TextFormField(
-                controller: _ubicacionCtrl,
-                decoration: const InputDecoration(labelText: 'Ubicación'),
+                controller: _zonaCtrl,
+                decoration: const InputDecoration(labelText: 'Zona'),
               ),
               TextFormField(
                 controller: _direccionCtrl,
@@ -205,8 +215,20 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
                 validator: _validarEnteroNoNegativo,
               ),
               TextFormField(
-                controller: _tarifaCtrl,
-                decoration: const InputDecoration(labelText: 'Tarifa'),
+                controller: _tarifaHoraCtrl,
+                decoration: const InputDecoration(labelText: 'Tarifa por hora'),
+                keyboardType: TextInputType.number,
+                validator: _validarDecimalNoNegativo,
+              ),
+              TextFormField(
+                controller: _tarifaDiaCtrl,
+                decoration: const InputDecoration(labelText: 'Tarifa por día'),
+                keyboardType: TextInputType.number,
+                validator: _validarDecimalNoNegativo,
+              ),
+              TextFormField(
+                controller: _tarifaNocheCtrl,
+                decoration: const InputDecoration(labelText: 'Tarifa por noche'),
                 keyboardType: TextInputType.number,
                 validator: _validarDecimalNoNegativo,
               ),

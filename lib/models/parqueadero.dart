@@ -2,10 +2,12 @@ class Parqueadero {
   final int id;
   final String nombre;
   final String direccion;
-  final String ubicacion;
+  final String zona;
   final String nombrePropietario;
   final int? capacidadTotal;
-  final double? tarifa;
+  final double? tarifaHora;
+  final double? tarifaDia;
+  final double? tarifaNoche;
   final String? horaInicio;
   final String? horaFin;
 
@@ -13,10 +15,12 @@ class Parqueadero {
     required this.id,
     required this.nombre,
     required this.direccion,
-    required this.ubicacion,
+    required this.zona,
     required this.nombrePropietario,
     this.capacidadTotal,
-    this.tarifa,
+    this.tarifaHora,
+    this.tarifaDia,
+    this.tarifaNoche,
     this.horaInicio,
     this.horaFin,
   });
@@ -26,10 +30,12 @@ class Parqueadero {
       id: json['id'] as int,
       nombre: json['nombre'] as String? ?? '',
       direccion: json['direccion'] as String? ?? '',
-      ubicacion: json['ubicacion'] as String? ?? '',
+      zona: json['zona'] as String? ?? '',
       nombrePropietario: json['nombrePropietario'] as String? ?? '',
       capacidadTotal: (json['capacidadTotal'] as num?)?.toInt(),
-      tarifa: (json['tarifa'] as num?)?.toDouble(),
+      tarifaHora: (json['tarifaHora'] as num?)?.toDouble(),
+      tarifaDia: (json['tarifaDia'] as num?)?.toDouble(),
+      tarifaNoche: (json['tarifaNoche'] as num?)?.toDouble(),
       horaInicio: json['horaInicio'] as String?,
       horaFin: json['horaFin'] as String?,
     );

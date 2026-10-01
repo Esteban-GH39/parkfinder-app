@@ -41,16 +41,24 @@ Parqueadero parqueaderoDePrueba() => Parqueadero(
   id: 7,
   nombre: 'Parqueadero Centro',
   direccion: 'Calle 53 #10-20',
-  ubicacion: 'Chapinero',
+  zona: 'Chapinero',
   nombrePropietario: 'Laura Gómez',
   capacidadTotal: 50,
-  tarifa: 3000,
+  tarifaHora: 3000,
+  tarifaDia: 20000,
+  tarifaNoche: 15000,
   horaInicio: '07:00:00',
   horaFin: '20:00:00',
 );
 
 void main() {
   Future<void> montar(WidgetTester tester, _ApiServiceFalso api) async {
+    // El formulario tiene 10 campos: con la pantalla de prueba por defecto
+    // (800x600) el botón de guardar queda fuera de vista.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(
       MaterialApp(home: EditarParqueaderoScreen(
         parqueadero: parqueaderoDePrueba(),
@@ -95,23 +103,29 @@ void main() {
     expect(api.vecesLlamado, 0);
   });
 
-  testWidgets('rechaza una tarifa negativa', (tester) async {
-    final api = _ApiServiceFalso();
-    await montar(tester, api);
+  for (final (nombre, indice) in [
+    ('por hora', 5),
+    ('por día', 6),
+    ('por noche', 7),
+  ]) {
+    testWidgets('rechaza una tarifa $nombre negativa', (tester) async {
+      final api = _ApiServiceFalso();
+      await montar(tester, api);
 
-    await tester.enterText(find.byType(TextFormField).at(5), '-100');
-    await tester.tap(find.text('Guardar cambios'));
-    await tester.pump();
+      await tester.enterText(find.byType(TextFormField).at(indice), '-100');
+      await tester.tap(find.text('Guardar cambios'));
+      await tester.pump();
 
-    expect(find.text('No puede ser negativo'), findsOneWidget);
-    expect(api.vecesLlamado, 0);
-  });
+      expect(find.text('No puede ser negativo'), findsOneWidget);
+      expect(api.vecesLlamado, 0);
+    });
+  }
 
   testWidgets('rechaza una hora con formato inválido', (tester) async {
     final api = _ApiServiceFalso();
     await montar(tester, api);
 
-    await tester.enterText(find.byType(TextFormField).at(6), '25:99');
+    await tester.enterText(find.byType(TextFormField).at(8), '25:99');
     await tester.tap(find.text('Guardar cambios'));
     await tester.pump();
 
@@ -120,7 +134,7 @@ void main() {
   });
 
   testWidgets(
-    'envía al backend las claves del DTO (capacidad/horaFinal), no las de la entidad',
+    'envía al backend las claves del DTO (zona, tarifas, horaFinal), no las de la entidad',
     (tester) async {
       final api = _ApiServiceFalso();
       await montar(tester, api);
@@ -128,19 +142,25 @@ void main() {
       await tester.enterText(find.byType(TextFormField).at(0), 'Parqueadero Norte');
       await tester.enterText(find.byType(TextFormField).at(4), '80');
       await tester.enterText(find.byType(TextFormField).at(5), '3500');
-      await tester.enterText(find.byType(TextFormField).at(6), '08:00');
-      await tester.enterText(find.byType(TextFormField).at(7), '21:00');
+      await tester.enterText(find.byType(TextFormField).at(6), '25000');
+      await tester.enterText(find.byType(TextFormField).at(7), '18000');
+      await tester.enterText(find.byType(TextFormField).at(8), '08:00');
+      await tester.enterText(find.byType(TextFormField).at(9), '21:00');
       await tester.tap(find.text('Guardar cambios'));
       await tester.pumpAndSettle();
 
       expect(api.idEnviado, 7);
       expect(api.camposEnviados?['nombre'], 'Parqueadero Norte');
-      // Las claves correctas del DTO de edición: "capacidad" y "horaFinal",
-      // no "capacidadTotal" ni "horaFin" (los nombres de la entidad).
-      expect(api.camposEnviados?['capacidad'], 80);
+      expect(api.camposEnviados?['capacidadTotal'], 80);
+      expect(api.camposEnviados?['tarifaHora'], 3500);
+      expect(api.camposEnviados?['tarifaDia'], 25000);
+      expect(api.camposEnviados?['tarifaNoche'], 18000);
+      // El DTO de edición usa "horaFinal", no "horaFin" (nombre de la entidad).
       expect(api.camposEnviados?['horaFinal'], '21:00');
-      expect(api.camposEnviados?.containsKey('capacidadTotal'), isFalse);
       expect(api.camposEnviados?.containsKey('horaFin'), isFalse);
+      // Claves viejas que ya no existen en el backend.
+      expect(api.camposEnviados?.containsKey('ubicacion'), isFalse);
+      expect(api.camposEnviados?.containsKey('tarifa'), isFalse);
     },
   );
 
@@ -175,7 +195,7 @@ void main() {
     final api = _ApiServiceFalso(
       respuesta: {
         'success': false,
-        'error': 'capacidad: La capacidad no puede ser negativa',
+        'error': 'capacidadTotal: La capacidad no puede ser negativa',
       },
     );
     await montar(tester, api);
@@ -184,7 +204,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('capacidad: La capacidad no puede ser negativa'),
+      find.text('capacidadTotal: La capacidad no puede ser negativa'),
       findsOneWidget,
     );
   });
@@ -193,7 +213,7 @@ void main() {
     final api = _ApiServiceFalso(
       historial: [
         {
-          'campo': 'tarifa',
+          'campo': 'tarifaHora',
           'valorAnterior': '3000.0',
           'valorNuevo': '3500.0',
           'fecha': '2026-09-27T18:47:34.661564',
@@ -206,7 +226,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Historial de cambios'), findsOneWidget);
-    expect(find.text('tarifa'), findsOneWidget);
+    expect(find.text('tarifaHora'), findsOneWidget);
     expect(find.text('3000.0 → 3500.0'), findsOneWidget);
   });
 
