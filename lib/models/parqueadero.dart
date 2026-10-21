@@ -14,6 +14,9 @@ class Parqueadero {
   //VARIABLES NUEVAS BASADA EN EL DTO
   final String? horaInicio;
   final String? horaFinal;
+  //VARIABLE TEMPORAL MIENTRAS SE CREA EL INICIO CON ROLES
+  final int fk_parqueadero_admin;
+
 
   Parqueadero({
     required this.id,
@@ -31,6 +34,8 @@ class Parqueadero {
     //VARIABLES NUEVAS BASADA EN EL DTO
     this.horaInicio,
     this.horaFinal,
+    //VARIABLE TEMPORAL MIENTRAS SE CREA EL INICIO CON ROLES
+    required this.fk_parqueadero_admin,
   });
 
   factory Parqueadero.fromJson(Map<String, dynamic> json) {
@@ -49,6 +54,7 @@ class Parqueadero {
       longitud: (json['longitud'] as num?)?.toDouble(),
       horaInicio: json['horaInicio'] as String? ?? '',
       horaFinal: json['horaFinal'] as String? ?? '',
+      fk_parqueadero_admin: (json['fk_parqueadero_admin'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -66,7 +72,9 @@ class Parqueadero {
     'longitud': longitud,
     //VARIABLES NUEVAS BASADA EN EL DTO
     'horaInicio': horaInicio,
-    'horaFinal': horaFinal
+    'horaFinal': horaFinal,
+    // ID TEMPORAL MIENTRAS SE HACE LA GESTIÓN DE ROLES
+    'fk_parqueadero_admin': fk_parqueadero_admin
   };
 
   // NUEVO: body exacto del ParqueaderoDto del backend
@@ -81,6 +89,7 @@ class Parqueadero {
     'horaInicio': _horaONull(horaInicio),
     'horaFinal': _horaONull(horaFinal),
     'nombrePropietario': representante.trim(),
+    'fk_parqueadero_admin':fk_parqueadero_admin
   };
 
   static String? _horaONull(String? h) =>

@@ -5,10 +5,7 @@ import '../../models/parqueadero.dart';
 import '../../services/api_service.dart';
 
 /// HU-18: el administrador registra un nuevo parqueadero.
-///
-/// Al registrar con éxito muestra un mensaje de confirmación y cierra la
-/// pantalla devolviendo `true`, para que la pantalla que la abrió recargue
-/// la lista.
+
 class RegistroParqueaderoScreen extends StatefulWidget {
   const RegistroParqueaderoScreen({super.key, this.apiService});
 
@@ -21,7 +18,7 @@ class RegistroParqueaderoScreen extends StatefulWidget {
 }
 
 class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
-  /// Únicas zonas válidas para el registro
+
   static const List<String> _localidades = [
     'Usaquén',
     'Chapinero',
@@ -59,6 +56,7 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
   final _tarifaNocheCtrl = TextEditingController();
   final _horaInicioCtrl = TextEditingController();
   final _horaFinalCtrl = TextEditingController();
+  final _idAdminCtrl = TextEditingController();
 
   bool _guardando = false;
   String? _errorMensaje;
@@ -76,6 +74,7 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
     _tarifaNocheCtrl.dispose();
     _horaInicioCtrl.dispose();
     _horaFinalCtrl.dispose();
+    _idAdminCtrl.dispose();
     super.dispose();
   }
 
@@ -173,6 +172,7 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
 
     final parqueadero = Parqueadero(
       id: 0, // el backend asigna el id
+      fk_parqueadero_admin: int.tryParse(_idAdminCtrl.text.trim()) ?? 0,
       nombre: _nombreCtrl.text.trim(),
       zona: _localidadOficial(_zonaCtrl.text) ?? _zonaCtrl.text.trim(),
       direccion: _direccionCtrl.text.trim(),
@@ -331,6 +331,15 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              TextFormField(
+                controller: _idAdminCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'ID del Administrador (Temporal)',
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                validator: _validarCapacidad, // Reutiliza el validador de número mayor a 0
+              ),
               TextFormField(
                 controller: _nombreCtrl,
                 decoration: const InputDecoration(
