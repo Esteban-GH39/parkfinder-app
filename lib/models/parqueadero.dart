@@ -40,7 +40,7 @@ class Parqueadero {
 
   factory Parqueadero.fromJson(Map<String, dynamic> json) {
     return Parqueadero(
-      id: json['id'] as int,
+      id: (json['id'] as num?)?.toInt() ?? 0,
       nombre: json['nombre'] as String? ?? '',
       zona: json['zona'] as String? ?? '',
       direccion: json['direccion'] as String? ?? '',
@@ -94,6 +94,16 @@ class Parqueadero {
 
   static String? _horaONull(String? h) =>
       (h == null || h.trim().isEmpty) ? null : h.trim();
+
+  // Getters auxiliares para renderizar en la UI según la interfaz del mockup
+  String get encargado =>
+      representante.isNotEmpty ? representante : 'No especificado';
+
+  int get cuposDisponibles {
+    final total = capacidadTotal ?? 0;
+    final ocupados = cuposOcupados ?? 0;
+    return (total - ocupados) < 0 ? 0 : (total - ocupados);
+  }
 }
 
 /// Un renglón del historial de trazabilidad de HU-19.

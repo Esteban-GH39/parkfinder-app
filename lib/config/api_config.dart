@@ -7,4 +7,7 @@ class ApiConfig {
 
   //EndPoints de parqueadero (admin)
   static const String registrarParqueadero ='$baseUrl/parqueadero';
+
+  //LISTAR PARQUEADERO POR ID ADMIN
+  static  String listarParqueaderosAdmin(int idAdmin) => '$baseUrl/parqueaderos/admin/$idAdmin';
 }

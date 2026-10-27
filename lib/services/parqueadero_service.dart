@@ -28,4 +28,25 @@ class ParqueaderoService {
       return false;
     }
   }
+
+  Future<List<Parqueadero>> listarPorAdmin(int idAdmin) async {
+    final url = Uri.parse(ApiConfig.listarParqueaderosAdmin(idAdmin));
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonList = jsonDecode(response.body);
+        return jsonList.map((json) => Parqueadero.fromJson(json)).toList();
+      } else {
+        throw Exception(
+            'Error al obtener parqueaderos. Código: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('No se pudo conectar con el servidor: $e');
+    }
+  }
 }

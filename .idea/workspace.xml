@@ -5,7 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5d9d3b6b-0520-41e5-90a0-0d6a4c78d051" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/lib/screens/admin/id_admin_temporal_screen.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lib/screens/admin/listar_parqueaderos_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/config/api_config.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/config/api_config.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/main.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/models/parqueadero.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/parqueadero.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/services/parqueadero_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/parqueadero_service.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -63,7 +69,7 @@
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;feature/HU-18-registro-parqueadero-iu&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/HU-21-gestion-cupos&quot;,
     &quot;io.flutter.reload.alreadyRun&quot;: &quot;true&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;C:/Users/giova/Desktop/frontend-parkfinder-flutter/parkfinder-app&quot;,
