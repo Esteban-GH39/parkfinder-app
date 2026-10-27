@@ -150,7 +150,7 @@ class _ListarParqueaderosScreenState extends State<ListarParqueaderosScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '(${parqueadero.direccion.isNotEmpty ? parqueadero.direccion : "Sin dirección"})',
+                                  '${parqueadero.direccion.isNotEmpty ? parqueadero.direccion : "Sin dirección"}',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.black87,
@@ -159,7 +159,7 @@ class _ListarParqueaderosScreenState extends State<ListarParqueaderosScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '(capacidad total: ${parqueadero.capacidadTotal ?? 0})',
+                                  'Capacidad total: ${parqueadero.capacidadTotal ?? 0}',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.black87,
@@ -168,7 +168,7 @@ class _ListarParqueaderosScreenState extends State<ListarParqueaderosScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '(encargado: ${parqueadero.encargado})',
+                                  'Encargado: ${parqueadero.encargado}',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.black87,

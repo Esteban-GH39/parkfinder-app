@@ -29,6 +29,8 @@ class ParqueaderoService {
     }
   }
 
+
+  //METODO LISTAR PARQUEADERO
   Future<List<Parqueadero>> listarPorAdmin(int idAdmin) async {
     final url = Uri.parse(ApiConfig.listarParqueaderosAdmin(idAdmin));
 

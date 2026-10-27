@@ -44,7 +44,8 @@ class Parqueadero {
       nombre: json['nombre'] as String? ?? '',
       zona: json['zona'] as String? ?? '',
       direccion: json['direccion'] as String? ?? '',
-      representante: json['representante'] as String? ?? '',
+      representante: json['nombrePropietario'] as String? ??
+          json['representante'] as String? ?? '',
       capacidadTotal: (json['capacidadTotal'] as num?)?.toInt(),
       cuposOcupados: (json['cuposOcupados'] as num?)?.toInt(),
       tarifaHora: (json['tarifaHora'] as num?)?.toDouble(),
@@ -95,7 +96,6 @@ class Parqueadero {
   static String? _horaONull(String? h) =>
       (h == null || h.trim().isEmpty) ? null : h.trim();
 
-  // Getters auxiliares para renderizar en la UI según la interfaz del mockup
   String get encargado =>
       representante.isNotEmpty ? representante : 'No especificado';
 
