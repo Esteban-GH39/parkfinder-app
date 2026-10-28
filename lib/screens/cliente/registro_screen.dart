@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import '../../models/cliente.dart';
 import '../../services/api_service.dart';
 
-import 'buscar_screen.dart';
-
 class RegistroScreen extends StatefulWidget {
   const RegistroScreen({super.key});
 
@@ -41,6 +39,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Cuenta creada correctamente')),
         );
+        Navigator.of(context).pop(); // vuelve al inicio de sesión
       }
     } else {
       setState(() => _errorMensaje = resultado['error']);
@@ -91,15 +90,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
                     ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const BuscarScreen(),
-                    ),
-                  );
-                },
-                child: const Text('Ir a Buscar Parqueaderos (Temporal)'),
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('¿Ya tienes cuenta? Inicia sesión'),
               ),
             ],
           ),
