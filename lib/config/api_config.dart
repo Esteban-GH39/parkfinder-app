@@ -13,4 +13,7 @@ class ApiConfig {
 
   //ACTUALIZAR CUPO PARQUEADERO
   static String actualizarCuposParqueadero(int idParqueadero) => '$baseUrl/parqueaderos/$idParqueadero/cuposDisponibles';
+
+  //OBTENER COMPROBANTE DE PAGO POR ID
+  static String comprobantePorId(int idComprobante) => '$baseUrl/comprobante/$idComprobante';
 }

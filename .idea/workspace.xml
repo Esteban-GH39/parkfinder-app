@@ -5,12 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5d9d3b6b-0520-41e5-90a0-0d6a4c78d051" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/lib/screens/admin/gestion_cupos_parqueadero_screen.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test/hu21_servicios_falsos.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/config/api_config.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/config/api_config.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/models/parqueadero.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/parqueadero.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/screens/admin/gestion_cupos_parqueadero_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/admin/gestion_cupos_parqueadero_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/screens/admin/id_admin_temporal_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/admin/id_admin_temporal_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/screens/admin/listar_parqueaderos_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/admin/listar_parqueaderos_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/services/parqueadero_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/parqueadero_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/screens/registro_parqueadero_screen_test.dart" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,21 +61,68 @@
   <component name="ProjectViewState">
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Flutter.main.dart.executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;feature/HU-21-gestion-cupos&quot;,
-    &quot;io.flutter.reload.alreadyRun&quot;: &quot;true&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/giova/Desktop/frontend-parkfinder-flutter/parkfinder-app&quot;,
-    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Flutter Test.el estado se compara sin importar mayúsculas ni espacios.executor": "Run",
+    "Flutter Test.muestra el campo del comprobante y la reserva deshabilitada.executor": "Run",
+    "Flutter Test.rechaza el comprobante.executor": "Run",
+    "Flutter Test.si la consulta falla muestra el error sin \"Exception:\".executor": "Run",
+    "Flutter Test.sin id no consulta el comprobante.executor": "Run",
+    "Flutter Test.un comprobante aprobado muestra sus datos y habilita la reserva.executor": "Run",
+    "Flutter.main.dart.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "feature/HU-21-gestion-cupos",
+    "io.flutter.reload.alreadyRun": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/giova/Desktop/frontend-parkfinder-flutter/parkfinder-app",
+    "show.migrate.to.gradle.popup": "false"
   }
-}</component>
+}]]></component>
+  <component name="RunManager" selected="Flutter Test.si la consulta falla muestra el error sin &quot;Exception:&quot;">
+    <configuration name="el estado se compara sin importar mayúsculas ni espacios" type="FlutterTestConfigType" factoryName="Flutter Test" temporary="true" nameIsGenerated="true">
+      <option name="testName" value="el estado se compara sin importar mayúsculas ni espacios" />
+      <option name="testFile" value="$PROJECT_DIR$/test/codigo_reserva_screen_test.dart" />
+      <option name="useRegexp" value="true" />
+      <method v="2" />
+    </configuration>
+    <configuration name="rechaza el comprobante" type="FlutterTestConfigType" factoryName="Flutter Test" temporary="true" nameIsGenerated="true">
+      <option name="testName" value="rechaza el comprobante" />
+      <option name="testFile" value="$PROJECT_DIR$/test/codigo_reserva_screen_test.dart" />
+      <option name="useRegexp" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration name="si la consulta falla muestra el error sin &quot;Exception:&quot;" type="FlutterTestConfigType" factoryName="Flutter Test" temporary="true" nameIsGenerated="true">
+      <option name="testName" value="si la consulta falla muestra el error sin &quot;Exception:&quot;" />
+      <option name="testFile" value="$PROJECT_DIR$/test/codigo_reserva_screen_test.dart" />
+      <option name="useRegexp" value="true" />
+      <method v="2" />
+    </configuration>
+    <configuration name="sin id no consulta el comprobante" type="FlutterTestConfigType" factoryName="Flutter Test" temporary="true" nameIsGenerated="true">
+      <option name="testName" value="sin id no consulta el comprobante" />
+      <option name="testFile" value="$PROJECT_DIR$/test/codigo_reserva_screen_test.dart" />
+      <option name="useRegexp" value="true" />
+      <method v="2" />
+    </configuration>
+    <configuration name="un comprobante aprobado muestra sus datos y habilita la reserva" type="FlutterTestConfigType" factoryName="Flutter Test" temporary="true" nameIsGenerated="true">
+      <option name="testName" value="un comprobante aprobado muestra sus datos y habilita la reserva" />
+      <option name="testFile" value="$PROJECT_DIR$/test/codigo_reserva_screen_test.dart" />
+      <option name="useRegexp" value="true" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Flutter Test.si la consulta falla muestra el error sin &quot;Exception:&quot;" />
+        <item itemvalue="Flutter Test.rechaza el comprobante" />
+        <item itemvalue="Flutter Test.el estado se compara sin importar mayúsculas ni espacios" />
+        <item itemvalue="Flutter Test.un comprobante aprobado muestra sus datos y habilita la reserva" />
+        <item itemvalue="Flutter Test.sin id no consulta el comprobante" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="5d9d3b6b-0520-41e5-90a0-0d6a4c78d051" name="Changes" comment="" />

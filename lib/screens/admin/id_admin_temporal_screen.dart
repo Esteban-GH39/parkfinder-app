@@ -37,72 +37,37 @@ class _IngresarAdminScreenState extends State<IngresarAdminScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ingreso Administrador'),
+        title: const Text('Ingreso administrador'),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(
-                Icons.local_parking_rounded,
-                size: 80,
-                color: Colors.blue,
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Gestión de Parqueaderos',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Ingrese su ID de administrador para continuar',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 32),
               TextFormField(
                 controller: _idAdminController,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: const InputDecoration(
-                  labelText: 'ID Administrador',
-                  hintText: 'Ej. 1',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
+                  labelText: 'ID del administrador',
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-
-                    return 'Por favor ingrese el ID';
+                    return 'Requerido';
                   }
                   if (int.tryParse(value.trim()) == null) {
-                    return 'Ingrese un número válido';
+                    return 'Debe ser un número';
                   }
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _ingresar,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Ver mis parqueaderos',
-                  style: TextStyle(fontSize: 16),
-                ),
+                child: const Text('Ver mis parqueaderos'),
               ),
             ],
           ),
