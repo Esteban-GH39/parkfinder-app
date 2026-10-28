@@ -171,7 +171,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                         AvisoError(texto: _errorMensaje!),
                       ],
                       const SizedBox(height: 24),
-                      FilledButton(
+                      ElevatedButton(
                         onPressed: _cargando ? null : _registrar,
                         child: _cargando
                             ? const CargandoEnBoton()

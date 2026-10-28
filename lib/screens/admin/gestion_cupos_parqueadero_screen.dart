@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+
 import '../../models/parqueadero.dart';
 import '../../services/comprobante_service.dart';
 import '../../services/parqueadero_service.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/widgets_comunes.dart';
 import 'codigo_reserva_screen.dart';
 
 class GestionCuposParqueaderoScreen extends StatefulWidget {
@@ -23,7 +26,8 @@ class GestionCuposParqueaderoScreen extends StatefulWidget {
       _DetalleParqueaderoScreenState();
 }
 
-class _DetalleParqueaderoScreenState extends State<GestionCuposParqueaderoScreen> {
+class _DetalleParqueaderoScreenState
+    extends State<GestionCuposParqueaderoScreen> {
   late final ParqueaderoService _parqueaderoService =
       widget.parqueaderoService ?? ParqueaderoService();
 
@@ -44,7 +48,10 @@ class _DetalleParqueaderoScreenState extends State<GestionCuposParqueaderoScreen
 
     // Validación preventiva en Flutter
     if (nuevoValor < 0) {
-      _mostrarSnackBar('No hay cupos disponibles para descontar.', isError: true);
+      _mostrarSnackBar(
+        'No hay cupos disponibles para descontar.',
+        isError: true,
+      );
       return;
     }
     if (nuevoValor > _capacidadTotal) {
@@ -103,7 +110,7 @@ class _DetalleParqueaderoScreenState extends State<GestionCuposParqueaderoScreen
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(mensaje),
-        backgroundColor: isError ? Colors.red.shade700 : Colors.green.shade700,
+        backgroundColor: isError ? AppColors.error : AppColors.exito,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -111,31 +118,103 @@ class _DetalleParqueaderoScreenState extends State<GestionCuposParqueaderoScreen
 
   @override
   Widget build(BuildContext context) {
+    final ocupados = (_capacidadTotal - _cuposDisponibles).clamp(
+      0,
+      _capacidadTotal,
+    );
+    final secundario = ElevatedButton.styleFrom(
+      backgroundColor: AppColors.chip,
+      foregroundColor: AppColors.texto,
+    );
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gestión de cupos'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Gestión de cupos'), centerTitle: true),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ListTile(
-              title: const Text('Parqueadero'),
-              subtitle: Text(
-                widget.parqueadero.nombre.isNotEmpty
-                    ? widget.parqueadero.nombre
-                    : 'Parqueadero ${widget.parqueadero.id}',
+            TarjetaBlanca(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: AppColors.acentoSuave,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.local_parking,
+                          color: AppColors.acento,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Parqueadero',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textoSuave,
+                              ),
+                            ),
+                            Text(
+                              widget.parqueadero.nombre.isNotEmpty
+                                  ? widget.parqueadero.nombre
+                                  : 'Parqueadero ${widget.parqueadero.id}',
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _Dato(
+                          valor: '$_cuposDisponibles',
+                          etiqueta: 'Cupos disponibles',
+                          color: _cuposDisponibles == 0
+                              ? AppColors.error
+                              : AppColors.texto,
+                        ),
+                      ),
+                      Expanded(
+                        child: _Dato(
+                          valor: '$_capacidadTotal',
+                          etiqueta: 'Capacidad total',
+                          color: AppColors.textoSuave,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: _capacidadTotal == 0
+                          ? 0
+                          : ocupados / _capacidadTotal,
+                      minHeight: 8,
+                      backgroundColor: AppColors.chip,
+                      color: _cuposDisponibles == 0
+                          ? AppColors.error
+                          : AppColors.acento,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            ListTile(
-              title: const Text('Capacidad total'),
-              subtitle: Text('$_capacidadTotal'),
-            ),
-            ListTile(
-              title: const Text('Cupos disponibles'),
-              subtitle: Text('$_cuposDisponibles'),
             ),
             const SizedBox(height: 20),
             if (_isLoading)
@@ -151,12 +230,14 @@ class _DetalleParqueaderoScreenState extends State<GestionCuposParqueaderoScreen
             const SizedBox(height: 12),
             // Descuenta un cupo disponible
             ElevatedButton(
+              style: secundario,
               onPressed: _isLoading ? null : () => _modificarCupos(-1),
               child: const Text('Ingreso directo (-1 cupo)'),
             ),
             const SizedBox(height: 12),
             // Agrega un cupo disponible
             ElevatedButton(
+              style: secundario,
               onPressed: _isLoading ? null : () => _modificarCupos(1),
               child: const Text('Liberar cupo (+1 cupo)'),
             ),
@@ -165,4 +246,35 @@ class _DetalleParqueaderoScreenState extends State<GestionCuposParqueaderoScreen
       ),
     );
   }
+}
+
+class _Dato extends StatelessWidget {
+  const _Dato({
+    required this.valor,
+    required this.etiqueta,
+    required this.color,
+  });
+  final String valor;
+  final String etiqueta;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        valor,
+        style: TextStyle(
+          fontSize: 38,
+          fontWeight: FontWeight.w700,
+          height: 1.1,
+          color: color,
+        ),
+      ),
+      Text(
+        etiqueta,
+        style: const TextStyle(fontSize: 12.5, color: AppColors.textoSuave),
+      ),
+    ],
+  );
 }

@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../models/parqueadero.dart';
 import '../../services/admin_service.dart';
 import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
 import '../cliente/login_screen.dart';
+import 'gestion_cupos_parqueadero_screen.dart';
 
 /// Vista del dueño: sus parqueaderos con los cupos que quedan y las reservas que reciben.
 /// Se actualiza sola cada pocos segundos para ver llegar las reservas.
@@ -65,8 +67,10 @@ class _AdminScreenState extends State<AdminScreen> {
       return;
     }
     try {
-      final parqueaderos = await _servicio.misParqueaderos(adminId);
+      // Primero las reservas: al listarlas el API libera las retenciones vencidas,
+      // y así los cupos de los parqueaderos ya salen al día.
       final reservas = await _servicio.misReservas(adminId);
+      final parqueaderos = await _servicio.misParqueaderos(adminId);
       if (!mounted) return;
       setState(() {
         _parqueaderos = parqueaderos;
@@ -81,6 +85,17 @@ class _AdminScreenState extends State<AdminScreen> {
         _error = 'No se pudo consultar tus parqueaderos. Reintentando...';
       });
     }
+  }
+
+  /// Gestión de cupos (HU-21): ingreso directo, liberar cupo y código de reserva.
+  Future<void> _gestionarCupos(Map<String, dynamic> p) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            GestionCuposParqueaderoScreen(parqueadero: Parqueadero.fromJson(p)),
+      ),
+    );
+    if (mounted) _consultar();
   }
 
   void _salir() {
@@ -156,7 +171,10 @@ class _AdminScreenState extends State<AdminScreen> {
                   texto: 'Aún no tienes parqueaderos asignados',
                 ),
               for (final p in _parqueaderos) ...[
-                _TarjetaParqueadero(p: p as Map<String, dynamic>),
+                _TarjetaParqueadero(
+                  p: p as Map<String, dynamic>,
+                  onTap: () => _gestionarCupos(p),
+                ),
                 const SizedBox(height: 12),
               ],
               const SizedBox(height: 12),
@@ -204,11 +222,22 @@ class _AdminScreenState extends State<AdminScreen> {
 }
 
 class _TarjetaParqueadero extends StatelessWidget {
-  const _TarjetaParqueadero({required this.p});
+  const _TarjetaParqueadero({required this.p, required this.onTap});
   final Map<String, dynamic> p;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      key: Key('abrirGestion_${p['id']}'),
+      borderRadius: BorderRadius.circular(28),
+      onTap: onTap,
+      child: _tarjeta(),
+    ),
+  );
+
+  Widget _tarjeta() {
     final capacidad = (p['capacidadTotal'] as num?)?.toInt() ?? 0;
     final libres = (p['cuposDisponibles'] as num?)?.toInt() ?? 0;
     final ocupados = (capacidad - libres).clamp(0, capacidad);
@@ -282,6 +311,21 @@ class _TarjetaParqueadero extends StatelessWidget {
               backgroundColor: AppColors.chip,
               color: libres == 0 ? AppColors.error : AppColors.acento,
             ),
+          ),
+          const SizedBox(height: 12),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                'Gestionar cupos',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.acento,
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 18, color: AppColors.acento),
+            ],
           ),
         ],
       ),

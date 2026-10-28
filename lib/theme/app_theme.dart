@@ -87,6 +87,18 @@ class AppTheme {
         backgroundColor: AppColors.oscuro,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.oscuro,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.chip,
+          disabledForegroundColor: AppColors.textoSuave,
+          elevation: 0,
+          minimumSize: const Size.fromHeight(58),
+          shape: const StadiumBorder(),
+          textStyle: texto.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.oscuro,
