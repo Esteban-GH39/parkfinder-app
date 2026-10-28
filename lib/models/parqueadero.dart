@@ -6,6 +6,7 @@ class Parqueadero {
   final String representante;
   final int? capacidadTotal;
   final int? cuposOcupados;
+  final int? cuposDisponiblesApi;
   final double? tarifaHora;
   final double? tarifaDia;
   final double? tarifaNoche;
@@ -26,6 +27,7 @@ class Parqueadero {
     required this.representante,
     this.capacidadTotal,
     this.cuposOcupados,
+    this.cuposDisponiblesApi,
     this.tarifaHora,
     this.tarifaDia,
     this.tarifaNoche,
@@ -40,13 +42,17 @@ class Parqueadero {
 
   factory Parqueadero.fromJson(Map<String, dynamic> json) {
     return Parqueadero(
-      id: json['id'] as int,
+      id: (json['parqueaderoId'] as num?)?.toInt() ??
+          (json['id'] as num?)?.toInt() ??
+          0,
       nombre: json['nombre'] as String? ?? '',
       zona: json['zona'] as String? ?? '',
       direccion: json['direccion'] as String? ?? '',
-      representante: json['representante'] as String? ?? '',
+      representante: json['nombrePropietario'] as String? ??
+          json['representante'] as String? ?? '',
       capacidadTotal: (json['capacidadTotal'] as num?)?.toInt(),
       cuposOcupados: (json['cuposOcupados'] as num?)?.toInt(),
+      cuposDisponiblesApi: (json['cuposDisponibles'] as num?)?.toInt(),
       tarifaHora: (json['tarifaHora'] as num?)?.toDouble(),
       tarifaDia: (json['tarifaDia'] as num?)?.toDouble(),
       tarifaNoche: (json['tarifaNoche'] as num?)?.toDouble(),
@@ -94,6 +100,16 @@ class Parqueadero {
 
   static String? _horaONull(String? h) =>
       (h == null || h.trim().isEmpty) ? null : h.trim();
+
+  String get encargado =>
+      representante.isNotEmpty ? representante : 'No especificado';
+
+  int get cuposDisponibles {
+    if (cuposDisponiblesApi != null) return cuposDisponiblesApi!;
+    final total = capacidadTotal ?? 0;
+    final ocupados = cuposOcupados ?? 0;
+    return (total - ocupados) < 0 ? 0 : (total - ocupados);
+  }
 }
 
 /// Un renglón del historial de trazabilidad de HU-19.
