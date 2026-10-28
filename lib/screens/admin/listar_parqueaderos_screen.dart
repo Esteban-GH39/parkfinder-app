@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:parkfinder_app/screens/admin/gestion_cupos_parqueadero_screen.dart';
 import '../../models/parqueadero.dart';
 import '../../services/parqueadero_service.dart';
 
@@ -31,10 +32,12 @@ class _ListarParqueaderosScreenState extends State<ListarParqueaderosScreen> {
   }
 
   void _onParqueaderoSeleccionado(Parqueadero parqueadero) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Seleccionado: ${parqueadero.nombre} (ID: ${parqueadero.id})'),
-        duration: const Duration(seconds: 1),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GestionCuposParqueaderoScreen(
+          parqueadero: parqueadero,
+        ),
       ),
     );
   }

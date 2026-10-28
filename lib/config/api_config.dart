@@ -10,4 +10,7 @@ class ApiConfig {
 
   //LISTAR PARQUEADERO POR ID ADMIN
   static  String listarParqueaderosAdmin(int idAdmin) => '$baseUrl/parqueaderos/admin/$idAdmin';
+
+  //ACTUALIZAR CUPO PARQUEADERO
+  static String actualizarCuposParqueadero(int idParqueadero) => '$baseUrl/parqueaderos/$idParqueadero/cuposDisponibles';
 }

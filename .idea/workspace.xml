@@ -5,7 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5d9d3b6b-0520-41e5-90a0-0d6a4c78d051" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/lib/screens/admin/gestion_cupos_parqueadero_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/config/api_config.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/config/api_config.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/models/parqueadero.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/parqueadero.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/screens/admin/listar_parqueaderos_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/admin/listar_parqueaderos_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/services/parqueadero_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/parqueadero_service.dart" afterDir="false" />

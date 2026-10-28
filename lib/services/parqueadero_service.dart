@@ -5,6 +5,7 @@ import '../models/parqueadero.dart'; // Ajusta la ruta a tu DTO/Modelo
 
 class ParqueaderoService {
 
+  //METODO PARA REGISGRA PARQUEADERO
   Future<bool> registrarParqueadero( Parqueadero parqueadero) async {
     final url = Uri.parse(ApiConfig.registrarParqueadero);
 
@@ -49,6 +50,34 @@ class ParqueaderoService {
       }
     } catch (e) {
       throw Exception('No se pudo conectar con el servidor: $e');
+    }
+  }
+
+  //METODO PARA GESTIONAR CUPOS DISPONIBLES DEL PARQUEADERO
+  Future<bool> actualizarCuposDisponibles({
+    required int idParqueadero,
+    required int idAdmin,
+    required int nuevosCupos,
+  }) async {
+    final url = Uri.parse(ApiConfig.actualizarCuposParqueadero(idParqueadero));
+
+    final response = await http.patch(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'id': idAdmin,
+        'cuposDisponibles': nuevosCupos,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return true;
+    } else {
+
+      final errorMsg = response.body.isNotEmpty
+          ? response.body
+          : 'Error al actualizar cupos (${response.statusCode})';
+      throw Exception(errorMsg);
     }
   }
 }
