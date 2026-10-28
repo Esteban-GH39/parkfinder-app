@@ -60,7 +60,7 @@ class _DetalleParqueaderoScreenState extends State<GestionCuposParqueaderoScreen
     try {
       await _parqueaderoService.actualizarCuposDisponibles(
         idParqueadero: widget.parqueadero.id,
-        idAdmin: widget.parqueadero.fk_parqueadero_admin, // 👈 Enviado al body JSON
+        idAdmin: widget.parqueadero.fk_parqueadero_admin,
         nuevosCupos: nuevoValor,
       );
 

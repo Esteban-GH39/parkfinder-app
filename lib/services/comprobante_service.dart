@@ -19,8 +19,11 @@ class ComprobanteService {
     }
 
     if (response.statusCode == 200) {
-      return Comprobante.fromJson(
-          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>);
+      final json =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      // Si la API no envía el id con una clave conocida, se usa el id consultado
+      json['comprobanteId'] ??= idComprobante;
+      return Comprobante.fromJson(json);
     } else if (response.statusCode == 404) {
       throw Exception('No existe un comprobante con id $idComprobante.');
     } else {

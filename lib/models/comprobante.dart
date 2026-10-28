@@ -19,7 +19,11 @@ class Comprobante {
 
   factory Comprobante.fromJson(Map<String, dynamic> json) {
     return Comprobante(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: (json['comprobanteId'] as num?)?.toInt() ??
+          (json['idComprobante'] as num?)?.toInt() ??
+          (json['id_comprobante'] as num?)?.toInt() ??
+          (json['id'] as num?)?.toInt() ??
+          0,
       fechaGenerado: json['fechaGenerado']?.toString(),
       valorPago: (json['valorPago'] as num?)?.toDouble(),
       medioPago: json['medioPago'] as String?,
