@@ -3,6 +3,7 @@ class SesionService {
   SesionService._();
   static final SesionService instancia = SesionService._();
 
+  int? id;
   String? nombre;
   String? correo;
   String? rol;
@@ -11,16 +12,19 @@ class SesionService {
   bool get esAdmin => rol == 'ADMIN';
 
   void iniciar({
+    int? id,
     required String nombre,
     required String correo,
     required String rol,
   }) {
+    this.id = id;
     this.nombre = nombre;
     this.correo = correo;
     this.rol = rol;
   }
 
   void cerrar() {
+    id = null;
     nombre = null;
     correo = null;
     rol = null;

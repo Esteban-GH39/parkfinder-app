@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/cliente.dart';
 import '../../services/api_service.dart';
+import '../../theme/widgets_comunes.dart';
 
 class RegistroScreen extends StatefulWidget {
   const RegistroScreen({super.key});
@@ -49,45 +50,82 @@ class _RegistroScreenState extends State<RegistroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Crear cuenta')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
+      appBar: AppBar(
+        leading: const _BotonAtras(),
+        title: const Text('Crear cuenta'),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: Column(
             children: [
-              TextFormField(
-                controller: _nombreCtrl,
-                decoration: const InputDecoration(labelText: 'Nombre'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
+              TarjetaBlanca(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Crea tu cuenta para buscar, reservar y pagar tu parqueadero',
+                        style: TextStyle(fontSize: 14, height: 1.4),
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _nombreCtrl,
+                        decoration: const InputDecoration(
+                          hintText: 'Nombre',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        validator: (v) =>
+                            (v == null || v.isEmpty) ? 'Requerido' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _correoCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          hintText: 'Correo',
+                          prefixIcon: Icon(Icons.mail_outline),
+                        ),
+                        validator: (v) => (v == null || !v.contains('@'))
+                            ? 'Correo inválido'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _contrasenaCtrl,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          hintText: 'Contraseña',
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.length < 8) {
+                            return 'Mínimo 8 caracteres';
+                          }
+                          if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,}$')
+                              .hasMatch(v)) {
+                            return 'Debe incluir letra y número';
+                          }
+                          return null;
+                        },
+                      ),
+                      if (_errorMensaje != null) ...[
+                        const SizedBox(height: 16),
+                        AvisoError(texto: _errorMensaje!),
+                      ],
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        onPressed: _cargando ? null : _registrar,
+                        child: _cargando
+                            ? const CargandoEnBoton()
+                            : const Text('Registrarme'),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              TextFormField(
-                controller: _correoCtrl,
-                decoration: const InputDecoration(labelText: 'Correo'),
-                validator: (v) =>
-                    (v == null || !v.contains('@')) ? 'Correo inválido' : null,
-              ),
-              TextFormField(
-                controller: _contrasenaCtrl,
-                decoration: const InputDecoration(labelText: 'Contraseña'),
-                obscureText: true,
-                validator: (v) {
-                  if (v == null || v.length < 8) return 'Mínimo 8 caracteres';
-                  if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,}$').hasMatch(v)) {
-                    return 'Debe incluir letra y número';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              if (_errorMensaje != null)
-                Text(_errorMensaje!, style: const TextStyle(color: Colors.red)),
-              _cargando
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _registrar,
-                      child: const Text('Registrarme'),
-                    ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -99,4 +137,22 @@ class _RegistroScreenState extends State<RegistroScreen> {
       ),
     );
   }
+}
+
+class _BotonAtras extends StatelessWidget {
+  const _BotonAtras();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 16, top: 6, bottom: 6),
+    child: Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => Navigator.of(context).maybePop(),
+        child: const Icon(Icons.chevron_left, size: 26),
+      ),
+    ),
+  );
 }

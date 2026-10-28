@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/sesion_service.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/widgets_comunes.dart';
 import 'buscar_screen.dart';
 import 'registro_screen.dart';
 
@@ -45,6 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final datos = resultado['data'] as Map<String, dynamic>;
       final sesion = SesionService.instancia;
       sesion.iniciar(
+        id: (datos['id'] as num?)?.toInt(),
         nombre: '${datos['nombre'] ?? ''}',
         correo: '${datos['correo'] ?? correo}',
         rol: '${datos['rol'] ?? 'CLIENTE'}',
@@ -65,53 +68,75 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Iniciar sesión')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              key: const Key('campoCorreo'),
-              controller: _correoCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'Correo'),
-            ),
-            TextField(
-              key: const Key('campoContrasena'),
-              controller: _contrasenaCtrl,
-              obscureText: true,
-              onSubmitted: (_) => _iniciarSesion(),
-              decoration: const InputDecoration(labelText: 'Contraseña'),
-            ),
-            const SizedBox(height: 16),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  textAlign: TextAlign.center,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const EncabezadoMarca(
+                  subtitulo: 'Encuentra y reserva tu parqueadero',
                 ),
-              ),
-            ElevatedButton(
-              key: const Key('botonIniciarSesion'),
-              onPressed: _cargando ? null : _iniciarSesion,
-              child: _cargando
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Iniciar sesión'),
+                const SizedBox(height: 32),
+                TarjetaBlanca(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Iniciar sesión',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextField(
+                        key: const Key('campoCorreo'),
+                        controller: _correoCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          hintText: 'Correo',
+                          prefixIcon: Icon(Icons.mail_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        key: const Key('campoContrasena'),
+                        controller: _contrasenaCtrl,
+                        obscureText: true,
+                        onSubmitted: (_) => _iniciarSesion(),
+                        decoration: const InputDecoration(
+                          hintText: 'Contraseña',
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 16),
+                        AvisoError(texto: _error!),
+                      ],
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        key: const Key('botonIniciarSesion'),
+                        onPressed: _cargando ? null : _iniciarSesion,
+                        child: _cargando
+                            ? const CargandoEnBoton()
+                            : const Text('Iniciar sesión'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RegistroScreen()),
+                  ),
+                  child: const Text('¿No tienes cuenta? Regístrate'),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const RegistroScreen())),
-              child: const Text('¿No tienes cuenta? Regístrate'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -133,6 +158,7 @@ class _PanelAdminPendiente extends StatelessWidget {
             'Sesión de administrador iniciada.\n'
             'Aquí irán las pantallas de administración.',
             textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textoSuave),
           ),
         ),
       ),
