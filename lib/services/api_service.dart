@@ -18,17 +18,8 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 10));
 
-      // El backend responde 201 sin cuerpo
       if (response.statusCode == 201) {
         return {'success': true};
-      }
-
-      if (response.body.isEmpty) {
-        return {
-          'success': false,
-          'error':
-              'El servidor respondió vacío (status ${response.statusCode})',
-        };
       }
 
       final body = jsonDecode(utf8.decode(response.bodyBytes));
@@ -54,23 +45,35 @@ class ApiService {
     return 'Error desconocido';
   }
 
+  /// HU-03: busca parqueaderos por zona (texto parcial). Sin zona devuelve todos.
+  /// Lanza una excepción si no se puede conectar, para no confundir un error
+  /// con "sin resultados".
   Future<List<dynamic>> buscarParqueaderos({String? zona}) async {
-    try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}/parqueaderos/buscar').replace(
-        queryParameters: (zona != null && zona.trim().isNotEmpty)
-            ? {'zona': zona.trim()}
-            : null,
+    final uri = Uri.parse('${ApiConfig.baseUrl}/parqueaderos').replace(
+      queryParameters: (zona != null && zona.trim().isNotEmpty)
+          ? {'zona': zona.trim()}
+          : null,
+    );
+    final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw Exception(
+        'El servidor respondió ${response.statusCode}: ${response.body}',
       );
+    }
+    if (response.body.isEmpty) return [];
+    return jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
+  }
 
+  /// HU-03: zonas existentes para elegir en el buscador. Si falla devuelve vacío
+  /// (el usuario aún puede escribir la zona).
+  Future<List<String>> obtenerZonas() async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/parqueaderos/zonas');
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode != 200 || response.body.isEmpty) {
-        return [];
-      }
-
-      return jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
-    } catch (e) {
-      print('DEBUG: Error al buscar parqueaderos: $e');
+      if (response.statusCode != 200 || response.body.isEmpty) return [];
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
+      return data.map((z) => z.toString()).toList();
+    } catch (_) {
       return [];
     }
   }
