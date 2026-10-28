@@ -8,6 +8,9 @@ class SesionService {
   String? correo;
   String? rol;
 
+  /// Dueño al que pertenece la cuenta cuando el rol es ADMIN.
+  int? adminId;
+
   bool get activa => correo != null;
   bool get esAdmin => rol == 'ADMIN';
 
@@ -16,11 +19,13 @@ class SesionService {
     required String nombre,
     required String correo,
     required String rol,
+    int? adminId,
   }) {
     this.id = id;
     this.nombre = nombre;
     this.correo = correo;
     this.rol = rol;
+    this.adminId = adminId;
   }
 
   void cerrar() {
@@ -28,5 +33,6 @@ class SesionService {
     nombre = null;
     correo = null;
     rol = null;
+    adminId = null;
   }
 }

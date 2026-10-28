@@ -61,7 +61,13 @@ class _ReservarScreenState extends State<ReservarScreen> {
 
   DateTime? get _llegada => _hora == null
       ? null
-      : DateTime(_fecha.year, _fecha.month, _fecha.day, _hora!.hour, _hora!.minute);
+      : DateTime(
+          _fecha.year,
+          _fecha.month,
+          _fecha.day,
+          _hora!.hour,
+          _hora!.minute,
+        );
 
   static DateTime _soloFecha(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -293,9 +299,8 @@ class _ReservarScreenState extends State<ReservarScreen> {
   Widget _retencion() {
     final vencida = _restante == Duration.zero;
     final llegada = DateTime.parse('${_reserva!['fechaHoraLlegada']}');
-    final total = DateTime.parse('${_reserva!['expiraEn']}').difference(
-      DateTime.parse('${_reserva!['creadaEn']}'),
-    );
+    final total = DateTime.parse('${_reserva!['expiraEn']}')
+        .difference(DateTime.parse('${_reserva!['creadaEn']}'));
     final avance = total.inSeconds == 0
         ? 0.0
         : (_restante.inSeconds / total.inSeconds).clamp(0.0, 1.0);
@@ -410,8 +415,18 @@ class _ReservarScreenState extends State<ReservarScreen> {
   // ------------------------------------------------------------------ formatos
 
   static const _meses = [
-    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-    'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
   ];
 
   String _textoFecha(DateTime d) => '${d.day} ${_meses[d.month - 1]}';

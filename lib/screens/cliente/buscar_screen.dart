@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
+import 'login_screen.dart';
 import 'reservar_screen.dart';
 
 /// HU-03: búsqueda de parqueaderos por zona (escrita o elegida de las existentes).
@@ -97,6 +98,14 @@ class _BuscarScreenState extends State<BuscarScreen> {
     );
   }
 
+  void _salir() {
+    SesionService.instancia.cerrar();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+  }
+
   String _mensajeVacio() {
     final zona = _zonaCtrl.text.trim();
     return zona.isEmpty
@@ -111,15 +120,37 @@ class _BuscarScreenState extends State<BuscarScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(24, 20, 24, 16),
-              child: Text(
-                'Encuentra tu mejor parqueadero cerca de ti',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  height: 1.2,
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 20, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Encuentra tu mejor parqueadero cerca de ti',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Material(
+                    color: Colors.white,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      key: const Key('botonSalir'),
+                      customBorder: const CircleBorder(),
+                      onTap: _salir,
+                      child: const SizedBox(
+                        width: 46,
+                        height: 46,
+                        child: Icon(Icons.logout, size: 20),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             Padding(
@@ -320,9 +351,20 @@ class _TarjetaResultado extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      '${p['zona'] ?? '-'} · Capacidad ${p['capacidadTotal'] ?? '-'}',
-                      style: const TextStyle(fontSize: 12.5),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${p['zona'] ?? '-'}',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12.5),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _EtiquetaCupos(
+                          cupos: (p['cuposDisponibles'] as num?)?.toInt(),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -360,6 +402,32 @@ class _TarjetaResultado extends StatelessWidget {
   String _miles(dynamic valor) {
     final n = (valor as num).round().toString();
     return n.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => '.');
+  }
+}
+
+class _EtiquetaCupos extends StatelessWidget {
+  const _EtiquetaCupos({required this.cupos});
+  final int? cupos;
+
+  @override
+  Widget build(BuildContext context) {
+    if (cupos == null) return const SizedBox.shrink();
+    final hay = cupos! > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: hay ? AppColors.exitoSuave : AppColors.errorSuave,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        hay ? '$cupos cupos' : 'Sin cupos',
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          color: hay ? AppColors.exito : AppColors.error,
+        ),
+      ),
+    );
   }
 }
 

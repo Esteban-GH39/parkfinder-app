@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/cliente.dart';
 import '../../services/api_service.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
 
 class RegistroScreen extends StatefulWidget {
@@ -16,8 +17,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
   final _nombreCtrl = TextEditingController();
   final _correoCtrl = TextEditingController();
   final _contrasenaCtrl = TextEditingController();
+  final _telefonoCtrl = TextEditingController();
+  final _cedulaCtrl = TextEditingController();
   final _apiService = ApiService();
   bool _cargando = false;
+  bool _esDueno = false;
   String? _errorMensaje;
 
   Future<void> _registrar() async {
@@ -31,6 +35,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
       nombre: _nombreCtrl.text,
       correo: _correoCtrl.text,
       contrasena: _contrasenaCtrl.text,
+      rol: _esDueno ? 'ADMIN' : 'CLIENTE',
+      telefono: _esDueno ? int.tryParse(_telefonoCtrl.text) : null,
+      cedula: _esDueno ? int.tryParse(_cedulaCtrl.text) : null,
     );
     final resultado = await _apiService.registrarCliente(cliente);
 
@@ -67,8 +74,26 @@ class _RegistroScreenState extends State<RegistroScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Crea tu cuenta para buscar, reservar y pagar tu parqueadero',
+                        '¿Cómo vas a usar ParkFinder?',
                         style: TextStyle(fontSize: 14, height: 1.4),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _ChipRol(
+                            key: const Key('chipCliente'),
+                            texto: 'Busco parqueadero',
+                            activa: !_esDueno,
+                            onTap: () => setState(() => _esDueno = false),
+                          ),
+                          const SizedBox(width: 8),
+                          _ChipRol(
+                            key: const Key('chipDueno'),
+                            texto: 'Soy dueño',
+                            activa: _esDueno,
+                            onTap: () => setState(() => _esDueno = true),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
@@ -111,6 +136,36 @@ class _RegistroScreenState extends State<RegistroScreen> {
                           return null;
                         },
                       ),
+                      if (_esDueno) ...[
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          key: const Key('campoTelefono'),
+                          controller: _telefonoCtrl,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            hintText: 'Teléfono',
+                            prefixIcon: Icon(Icons.phone_outlined),
+                          ),
+                          validator: (v) =>
+                              (v == null || int.tryParse(v.trim()) == null)
+                              ? 'Solo números'
+                              : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          key: const Key('campoCedula'),
+                          controller: _cedulaCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            hintText: 'Cédula',
+                            prefixIcon: Icon(Icons.badge_outlined),
+                          ),
+                          validator: (v) =>
+                              (v == null || int.tryParse(v.trim()) == null)
+                              ? 'Solo números'
+                              : null,
+                        ),
+                      ],
                       if (_errorMensaje != null) ...[
                         const SizedBox(height: 16),
                         AvisoError(texto: _errorMensaje!),
@@ -137,6 +192,39 @@ class _RegistroScreenState extends State<RegistroScreen> {
       ),
     );
   }
+}
+
+class _ChipRol extends StatelessWidget {
+  const _ChipRol({
+    super.key,
+    required this.texto,
+    required this.activa,
+    required this.onTap,
+  });
+  final String texto;
+  final bool activa;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: activa ? AppColors.oscuro : AppColors.chip,
+    shape: const StadiumBorder(),
+    child: InkWell(
+      customBorder: const StadiumBorder(),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        child: Text(
+          texto,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: activa ? Colors.white : AppColors.textoSuave,
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _BotonAtras extends StatelessWidget {

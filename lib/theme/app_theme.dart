@@ -52,7 +52,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.fondo,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
         hintStyle: const TextStyle(color: AppColors.textoSuave),
         labelStyle: const TextStyle(color: AppColors.textoSuave),
         prefixIconColor: AppColors.textoSuave,

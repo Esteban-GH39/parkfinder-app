@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/sesion_service.dart';
-import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
+import '../admin/admin_screen.dart';
 import 'buscar_screen.dart';
 import 'registro_screen.dart';
 
@@ -51,9 +51,10 @@ class _LoginScreenState extends State<LoginScreen> {
         nombre: '${datos['nombre'] ?? ''}',
         correo: '${datos['correo'] ?? correo}',
         rol: '${datos['rol'] ?? 'CLIENTE'}',
+        adminId: (datos['adminId'] as num?)?.toInt(),
       );
       final Widget destino = sesion.esAdmin
-          ? const _PanelAdminPendiente()
+          ? const AdminScreen()
           : const BuscarScreen();
       Navigator.of(context)
           .pushReplacement(MaterialPageRoute(builder: (_) => destino));
@@ -136,29 +137,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Marcador de posición hasta que existan las pantallas de administración.
-class _PanelAdminPendiente extends StatelessWidget {
-  const _PanelAdminPendiente();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Panel de administrador')),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Sesión de administrador iniciada.\n'
-            'Aquí irán las pantallas de administración.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textoSuave),
           ),
         ),
       ),
