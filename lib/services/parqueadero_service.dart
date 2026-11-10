@@ -1,20 +1,19 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:parkfinder_app/config/api_config.dart';
+
 import '../models/parqueadero.dart'; // Ajusta la ruta a tu DTO/Modelo
 
 class ParqueaderoService {
-
   //METODO PARA REGISGRA PARQUEADERO
-  Future<bool> registrarParqueadero( Parqueadero parqueadero) async {
+  Future<bool> registrarParqueadero(Parqueadero parqueadero) async {
     final url = Uri.parse(ApiConfig.registrarParqueadero);
 
     try {
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode(parqueadero.toJson()),
       );
 
@@ -29,7 +28,6 @@ class ParqueaderoService {
       return false;
     }
   }
-
 
   //METODO LISTAR PARQUEADERO
   Future<List<Parqueadero>> listarPorAdmin(int idAdmin) async {
@@ -46,7 +44,8 @@ class ParqueaderoService {
         return jsonList.map((json) => Parqueadero.fromJson(json)).toList();
       } else {
         throw Exception(
-            'Error al obtener parqueaderos. Código: ${response.statusCode}');
+          'Error al obtener parqueaderos. Código: ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('No se pudo conectar con el servidor: $e');
@@ -75,9 +74,11 @@ class ParqueaderoService {
     if (response.statusCode == 200 || response.statusCode == 204) {
       return true;
     }
-    throw Exception(response.body.isNotEmpty
-        ? response.body
-        : 'Error al actualizar cupos (${response.statusCode})');
+    throw Exception(
+      response.body.isNotEmpty
+          ? response.body
+          : 'Error al actualizar cupos (${response.statusCode})',
+    );
   }
 
   //METODO PARA GESTIONAR CUPOS DISPONIBLES DEL PARQUEADERO
@@ -91,20 +92,27 @@ class ParqueaderoService {
     final response = await http.patch(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'id': idAdmin,
-        'cuposDisponibles': nuevosCupos,
-      }),
+      body: jsonEncode({'id': idAdmin, 'cuposDisponibles': nuevosCupos}),
     );
 
     if (response.statusCode == 200 || response.statusCode == 204) {
       return true;
     } else {
-
       final errorMsg = response.body.isNotEmpty
           ? response.body
           : 'Error al actualizar cupos (${response.statusCode})';
       throw Exception(errorMsg);
     }
+  }
+
+  /// HU-05: detalle de un parqueadero. Devuelve null si no existe.
+  Future<Map<String, dynamic>?> obtenerDetalle(int id) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/parqueaderos/$id');
+    final response = await http.get(url).timeout(const Duration(seconds: 10));
+    if (response.statusCode == 404) return null;
+    if (response.statusCode != 200) {
+      throw Exception('El servidor respondió ${response.statusCode}');
+    }
+    return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
   }
 }

@@ -5,6 +5,7 @@ import '../../services/reserva_service.dart';
 import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
+import 'detalle_parqueadero_screen.dart';
 import 'login_screen.dart';
 import 'pago_screen.dart';
 import 'reservar_screen.dart';
@@ -123,6 +124,20 @@ class _BuscarScreenState extends State<BuscarScreen> {
     // Tocar la zona ya elegida quita el filtro.
     _zonaCtrl.text = _zonaCtrl.text.trim() == zona ? '' : zona;
     _buscar();
+  }
+
+  /// HU-05: abre el detalle completo del parqueadero elegido.
+  void _verDetalle(Map<String, dynamic> parqueadero) {
+    final id = (parqueadero['id'] as num?)?.toInt();
+    if (id == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DetalleParqueaderoScreen(
+          id: id,
+          nombre: '${parqueadero['nombre'] ?? ''}',
+        ),
+      ),
+    );
   }
 
   /// HU-06: abre la reserva del parqueadero elegido.
@@ -282,6 +297,7 @@ class _BuscarScreenState extends State<BuscarScreen> {
           _TarjetaResultado(
             p: p as Map<String, dynamic>,
             onTap: () => _reservar(p),
+            onDetalle: () => _verDetalle(p),
           ),
           const SizedBox(height: 12),
         ],
@@ -497,9 +513,14 @@ class _ChipZona extends StatelessWidget {
 }
 
 class _TarjetaResultado extends StatelessWidget {
-  const _TarjetaResultado({required this.p, required this.onTap});
+  const _TarjetaResultado({
+    required this.p,
+    required this.onTap,
+    required this.onDetalle,
+  });
   final Map<String, dynamic> p;
   final VoidCallback onTap;
+  final VoidCallback onDetalle;
 
   @override
   Widget build(BuildContext context) {
@@ -591,29 +612,43 @@ class _TarjetaResultado extends StatelessWidget {
                   ],
                 ),
               ),
-              if (tarifa != null) ...[
-                const SizedBox(width: 8),
-                Text.rich(
-                  TextSpan(
-                    text: '\$${_miles(tarifa)}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    children: const [
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (tarifa != null)
+                    Text.rich(
                       TextSpan(
-                        text: '\n/ hr',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.textoSuave,
+                        text: '\$${_miles(tarifa)}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
                         ),
+                        children: const [
+                          TextSpan(
+                            text: '\n/ hr',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textoSuave,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                      textAlign: TextAlign.right,
+                    ),
+                  IconButton(
+                    key: Key('detalle_${p['id']}'),
+                    tooltip: 'Ver detalle',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(
+                      Icons.info_outline,
+                      color: AppColors.textoSuave,
+                    ),
+                    onPressed: onDetalle,
                   ),
-                  textAlign: TextAlign.right,
-                ),
-              ],
+                ],
+              ),
             ],
           ),
         ),
