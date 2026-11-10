@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'screens/cliente/registro_screen.dart';
+import 'screens/cliente/login_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const ParkFinderApp());
@@ -13,8 +14,8 @@ class ParkFinderApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ParkFinder',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const RegistroScreen(),
+      theme: AppTheme.claro,
+      home: const LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
