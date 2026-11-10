@@ -106,17 +106,40 @@ class ApiService {
         };
       }
 
-      final body = jsonDecode(response.body);
       if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        // El backend devuelve la lista de cambios registrados
+        if (body is List) {
+          return {
+            'success': true,
+            'data': {'cambiosRegistrados': body.length, 'cambios': body},
+          };
+        }
         return {'success': true, 'data': body};
       }
-      return {'success': false, 'error': body['error'] ?? 'Error desconocido'};
+      return {'success': false, 'error': _errorDe(response.body)};
     } catch (e) {
       return {
         'success': false,
         'error': 'No se pudo conectar con el servidor: $e',
       };
     }
+  }
+
+  /// El error puede venir como JSON del formato común o como texto simple (validaciones del parqueadero).
+  String _errorDe(String cuerpo) {
+    try {
+      final body = jsonDecode(cuerpo);
+      if (body is Map) {
+        final error = body['error'];
+        if (error is Map && error['mensaje'] != null) return '${error['mensaje']}';
+        if (body['mensaje'] != null) return '${body['mensaje']}';
+        if (error != null) return '$error';
+      }
+    } catch (_) {
+      // no era JSON: se muestra tal cual
+    }
+    return cuerpo.isEmpty ? 'Error desconocido' : cuerpo;
   }
 
   /// HU-19: historial de trazabilidad de un parqueadero.
@@ -190,6 +213,11 @@ class ApiService {
       }
     } catch (_) {
       // cuerpo vacío o que no es JSON: se usa el mensaje por código
+    }
+
+    final texto = utf8.decode(response.bodyBytes).trim();
+    if (response.statusCode == 400 && texto.isNotEmpty && !texto.startsWith('{')) {
+      return texto;
     }
 
     switch (response.statusCode) {

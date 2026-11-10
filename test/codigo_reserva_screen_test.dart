@@ -62,8 +62,8 @@ void main() {
       (tester) async {
     await montar(tester);
 
+    expect(find.text('Ingresa el código de reserva'), findsOneWidget);
     expect(find.text('Código de reserva'), findsOneWidget);
-    expect(find.text('Id del comprobante de pago'), findsOneWidget);
     expect(find.text('Validar comprobante'), findsOneWidget);
     expect(botonValidarReserva(tester).onPressed, isNull);
   });
@@ -85,7 +85,7 @@ void main() {
     await validarComprobante(tester, '15');
 
     expect(comprobantes.idConsultado, 15);
-    expect(find.text('Id comprobante'), findsOneWidget);
+    expect(find.text('Código'), findsOneWidget);
     expect(find.text('2026-10-28'), findsOneWidget);
     expect(find.text('\$12000'), findsOneWidget);
     expect(find.text('NEQUI'), findsOneWidget);
@@ -115,7 +115,7 @@ void main() {
       await validarComprobante(tester, '15');
 
       expect(find.text(mensaje), findsOneWidget);
-      expect(find.text('Id comprobante'), findsNothing);
+      expect(find.text('Código'), findsNothing);
       expect(botonValidarReserva(tester).onPressed, isNull);
     }
 

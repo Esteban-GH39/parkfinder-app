@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
+import '../../services/reserva_service.dart';
 import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/widgets_comunes.dart';
 import 'login_screen.dart';
+import 'pago_screen.dart';
 import 'reservar_screen.dart';
 
 /// HU-03: búsqueda de parqueaderos por zona (escrita o elegida de las existentes).
 class BuscarScreen extends StatefulWidget {
-  const BuscarScreen({super.key, ApiService? apiService})
-    : _apiService = apiService;
+  const BuscarScreen({
+    super.key,
+    ApiService? apiService,
+    ReservaService? reservaService,
+  }) : _apiService = apiService,
+       _reservaService = reservaService;
 
   final ApiService? _apiService;
+  final ReservaService? _reservaService;
 
   @override
   State<BuscarScreen> createState() => _BuscarScreenState();
@@ -20,9 +28,13 @@ class BuscarScreen extends StatefulWidget {
 class _BuscarScreenState extends State<BuscarScreen> {
   final _zonaCtrl = TextEditingController();
   late final ApiService _apiService = widget._apiService ?? ApiService();
+  late final ReservaService _reservaService =
+      widget._reservaService ?? ReservaService();
 
   List<String> _zonas = [];
   List<dynamic> _resultados = [];
+  List<Map<String, dynamic>> _pendientes = [];
+  List<Map<String, dynamic>> _confirmadas = [];
   bool _cargando = false;
   bool _buscado = false;
   String? _error;
@@ -32,6 +44,42 @@ class _BuscarScreenState extends State<BuscarScreen> {
     super.initState();
     _cargarZonas();
     _buscar(); // muestra todos al abrir
+    _cargarPendientes();
+  }
+
+  /// HU-07: reservas retenidas sin pagar, para poder retomarlas.
+  Future<void> _cargarPendientes() async {
+    final clienteId = SesionService.instancia.id;
+    if (clienteId == null) return;
+    final pendientes = await _reservaService.pendientes(clienteId);
+    final confirmadas = await _reservaService.confirmadas(clienteId);
+    if (!mounted) return;
+    setState(() {
+      _pendientes = pendientes;
+      _confirmadas = confirmadas;
+    });
+  }
+
+  /// Al volver de reservar o pagar, los cupos y las pendientes ya cambiaron.
+  void _refrescar() {
+    _buscar();
+    _cargarPendientes();
+  }
+
+  Future<void> _pagarPendiente(Map<String, dynamic> reserva) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PagoScreen(
+          reserva: reserva,
+          parqueadero: {
+            'nombre': reserva['parqueaderoNombre'],
+            'tarifaHora': reserva['tarifaHora'],
+            'tarifaHoraMoto': reserva['tarifaHoraMoto'],
+          },
+        ),
+      ),
+    );
+    if (mounted) _refrescar();
   }
 
   @override
@@ -90,12 +138,16 @@ class _BuscarScreenState extends State<BuscarScreen> {
       );
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            ReservarScreen(parqueadero: parqueadero, clienteId: clienteId),
-      ),
-    );
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) =>
+                ReservarScreen(parqueadero: parqueadero, clienteId: clienteId),
+          ),
+        )
+        .then((_) {
+          if (mounted) _refrescar();
+        });
   }
 
   void _salir() {
@@ -125,14 +177,36 @@ class _BuscarScreenState extends State<BuscarScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Encuentra tu mejor parqueadero cerca de ti',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const EtiquetaRol(admin: false),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Hola, ${SesionService.instancia.nombre ?? ''}',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textoSuave,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Encuentra tu mejor parqueadero cerca de ti',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -190,16 +264,153 @@ class _BuscarScreenState extends State<BuscarScreen> {
     if (_buscado && _resultados.isEmpty && !_cargando) {
       return _Mensaje(icono: Icons.search_off, texto: _mensajeVacio());
     }
-    return ListView.separated(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-      itemCount: _resultados.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, i) {
-        final p = _resultados[i] as Map<String, dynamic>;
-        return _TarjetaResultado(p: p, onTap: () => _reservar(p));
-      },
+      children: [
+        for (final reserva in _pendientes) ...[
+          _TarjetaPendiente(
+            reserva: reserva,
+            onPagar: () => _pagarPendiente(reserva),
+          ),
+          const SizedBox(height: 12),
+        ],
+        for (final reserva in _confirmadas) ...[
+          _TarjetaConfirmada(reserva: reserva),
+          const SizedBox(height: 12),
+        ],
+        for (final p in _resultados) ...[
+          _TarjetaResultado(
+            p: p as Map<String, dynamic>,
+            onTap: () => _reservar(p),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
     );
   }
+}
+
+/// Una reserva ya pagada: muestra el código que el cliente le da al dueño al llegar.
+class _TarjetaConfirmada extends StatelessWidget {
+  const _TarjetaConfirmada({required this.reserva});
+  final Map<String, dynamic> reserva;
+
+  String get _cupos {
+    final motos = ((reserva['cantidadMotos'] as num?) ?? 0).toInt();
+    final total = ((reserva['cantidad'] as num?) ?? 1).toInt();
+    final carros = total - motos;
+    return [
+      if (carros > 0) '$carros ${carros == 1 ? 'carro' : 'carros'}',
+      if (motos > 0) '$motos ${motos == 1 ? 'moto' : 'motos'}',
+    ].join(' · ');
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: Key('reservaConfirmada_${reserva['id']}'),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.exitoSuave,
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.check_circle_outline, color: AppColors.exito),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Reserva confirmada',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${reserva['parqueaderoNombre'] ?? ''} · $_cupos',
+                style: const TextStyle(
+                  color: AppColors.textoSuave,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const Text(
+              'Código',
+              style: TextStyle(color: AppColors.textoSuave, fontSize: 11),
+            ),
+            Text(
+              '${reserva['codigoReserva'] ?? '-'}',
+              key: const Key('codigoReservaConfirmada'),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+/// HU-07: una reserva retenida que falta pagar, con acceso directo al pago.
+class _TarjetaPendiente extends StatelessWidget {
+  const _TarjetaPendiente({required this.reserva, required this.onPagar});
+  final Map<String, dynamic> reserva;
+  final VoidCallback onPagar;
+
+  String _hora(String? iso) {
+    if (iso == null) return '';
+    final d = DateTime.tryParse(iso);
+    if (d == null) return '';
+    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final m = d.minute.toString().padLeft(2, '0');
+    return '$h:$m ${d.hour < 12 ? 'am' : 'pm'}';
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.acentoSuave,
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.timer_outlined, color: AppColors.acento),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Reserva pendiente de pago',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${reserva['parqueaderoNombre'] ?? ''} · vence '
+                '${_hora(reserva['expiraEn'] as String?)}',
+                style: const TextStyle(
+                  color: AppColors.textoSuave,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(
+          key: const Key('botonPagarPendiente'),
+          onPressed: onPagar,
+          child: const Text('Pagar'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _CampoBusqueda extends StatelessWidget {
@@ -361,9 +572,20 @@ class _TarjetaResultado extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _EtiquetaCupos(
-                          cupos: (p['cuposDisponibles'] as num?)?.toInt(),
-                        ),
+                        if (((p['capacidadMotos'] as num?) ?? 0) > 0) ...[
+                          _EtiquetaCupos(
+                            cupos: (p['cuposCarros'] as num?)?.toInt(),
+                            tipo: 'carros',
+                          ),
+                          const SizedBox(width: 6),
+                          _EtiquetaCupos(
+                            cupos: (p['cuposMotos'] as num?)?.toInt(),
+                            tipo: 'motos',
+                          ),
+                        ] else
+                          _EtiquetaCupos(
+                            cupos: (p['cuposDisponibles'] as num?)?.toInt(),
+                          ),
                       ],
                     ),
                   ],
@@ -406,8 +628,11 @@ class _TarjetaResultado extends StatelessWidget {
 }
 
 class _EtiquetaCupos extends StatelessWidget {
-  const _EtiquetaCupos({required this.cupos});
+  const _EtiquetaCupos({required this.cupos, this.tipo});
   final int? cupos;
+
+  /// 'carros' o 'motos' cuando el parqueadero separa los dos; null = cupos sin distinción.
+  final String? tipo;
 
   @override
   Widget build(BuildContext context) {
@@ -420,7 +645,7 @@ class _EtiquetaCupos extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        hay ? '$cupos cupos' : 'Sin cupos',
+        hay ? '$cupos ${tipo ?? 'cupos'}' : 'Sin ${tipo ?? 'cupos'}',
         style: TextStyle(
           fontSize: 11.5,
           fontWeight: FontWeight.w600,

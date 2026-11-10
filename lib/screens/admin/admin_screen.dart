@@ -8,7 +8,9 @@ import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
 import '../cliente/login_screen.dart';
+import 'editar_parqueadero_screen.dart';
 import 'gestion_cupos_parqueadero_screen.dart';
+import 'registrar_parqueadero_screen.dart';
 
 /// Vista del dueño: sus parqueaderos con los cupos que quedan y las reservas que reciben.
 /// Se actualiza sola cada pocos segundos para ver llegar las reservas.
@@ -87,6 +89,25 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  /// HU-18: registrar un parqueadero nuevo a nombre de este dueño.
+  Future<void> _registrar() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const RegistroParqueaderoScreen()),
+    );
+    if (mounted) _consultar();
+  }
+
+  /// HU-19: editar los datos de un parqueadero (con historial de cambios).
+  Future<void> _editar(Map<String, dynamic> p) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            EditarParqueaderoScreen(parqueadero: Parqueadero.fromJson(p)),
+      ),
+    );
+    if (mounted) _consultar();
+  }
+
   /// Gestión de cupos (HU-21): ingreso directo, liberar cupo y código de reserva.
   Future<void> _gestionarCupos(Map<String, dynamic> p) async {
     await Navigator.of(context).push(
@@ -120,12 +141,21 @@ class _AdminScreenState extends State<AdminScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Hola, ${_sesion.nombre ?? ''}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textoSuave,
-                        ),
+                      Row(
+                        children: [
+                          const EtiquetaRol(admin: true),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Hola, ${_sesion.nombre ?? ''}',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textoSuave,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       const Text(
@@ -154,6 +184,13 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              key: const Key('botonRegistrarParqueadero'),
+              onPressed: _registrar,
+              icon: const Icon(Icons.add),
+              label: const Text('Registrar parqueadero'),
+            ),
             const SizedBox(height: 20),
             if (_error != null) ...[
               AvisoError(texto: _error!),
@@ -174,6 +211,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 _TarjetaParqueadero(
                   p: p as Map<String, dynamic>,
                   onTap: () => _gestionarCupos(p),
+                  onEditar: () => _editar(p),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -222,9 +260,14 @@ class _AdminScreenState extends State<AdminScreen> {
 }
 
 class _TarjetaParqueadero extends StatelessWidget {
-  const _TarjetaParqueadero({required this.p, required this.onTap});
+  const _TarjetaParqueadero({
+    required this.p,
+    required this.onTap,
+    required this.onEditar,
+  });
   final Map<String, dynamic> p;
   final VoidCallback onTap;
+  final VoidCallback onEditar;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -312,11 +355,31 @@ class _TarjetaParqueadero extends StatelessWidget {
               color: libres == 0 ? AppColors.error : AppColors.acento,
             ),
           ),
+          if (((p['capacidadMotos'] as num?) ?? 0) > 0) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Carros ${(libres - ((p['cuposMotos'] as num?)?.toInt() ?? 0)).clamp(0, capacidad)} '
+              'de ${capacidad - ((p['capacidadMotos'] as num?)?.toInt() ?? 0)} · '
+              'Motos ${p['cuposMotos'] ?? 0} de ${p['capacidadMotos']}',
+              key: Key('cuposPorTipo_${p['id']}'),
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textoSuave,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Text(
+              TextButton.icon(
+                key: Key('editarParqueadero_${p['id']}'),
+                onPressed: onEditar,
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Editar'),
+              ),
+              const Spacer(),
+              const Text(
                 'Gestionar cupos',
                 style: TextStyle(
                   fontSize: 13,
@@ -324,7 +387,7 @@ class _TarjetaParqueadero extends StatelessWidget {
                   color: AppColors.acento,
                 ),
               ),
-              Icon(Icons.chevron_right, size: 18, color: AppColors.acento),
+              const Icon(Icons.chevron_right, size: 18, color: AppColors.acento),
             ],
           ),
         ],
@@ -379,33 +442,69 @@ class _TarjetaReserva extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Llega ${_llegada(DateTime.parse('${r['fechaHoraLlegada']}'))}',
+                  'Llega ${_llegada(DateTime.parse('${r['fechaHoraLlegada']}'))}'
+                  '${_cupos(r)}'
+                  '${r['codigoReserva'] != null ? ' · Código ${r['codigoReserva']}' : ''}',
                   style: const TextStyle(fontSize: 12.5),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          enCurso
-              ? _Etiqueta(
-                  texto: 'Retenida ${_mmss(restante)}',
-                  fondo: AppColors.acentoSuave,
-                  color: AppColors.acento,
-                )
-              : const _Etiqueta(
-                  texto: 'Expirada',
-                  fondo: AppColors.chip,
-                  color: AppColors.textoSuave,
-                ),
+          _etiquetaEstado(enCurso, restante),
         ],
       ),
     );
+  }
+
+  /// Cada estado de la reserva con su propia etiqueta: antes todo lo que no era retenida salía "Expirada".
+  Widget _etiquetaEstado(bool enCurso, Duration restante) {
+    switch ('${r['estado']}') {
+      case 'CONFIRMADA':
+        // Sigue confirmada; si el dueño ya validó el código, además figura como atendida
+        return r['validadaEn'] != null
+            ? const _Etiqueta(
+                texto: 'Atendida',
+                fondo: AppColors.lila,
+                color: Color(0xFF6B54C9),
+              )
+            : const _Etiqueta(
+                texto: 'Reservado',
+                fondo: AppColors.exitoSuave,
+                color: AppColors.exito,
+              );
+      case 'RETENIDA' when enCurso:
+        return _Etiqueta(
+          texto: 'Retenida ${_mmss(restante)}',
+          fondo: AppColors.acentoSuave,
+          color: AppColors.acento,
+        );
+      default:
+        return const _Etiqueta(
+          texto: 'Expirada',
+          fondo: AppColors.chip,
+          color: AppColors.textoSuave,
+        );
+    }
   }
 
   static String _mmss(Duration d) {
     final m = d.inMinutes.toString().padLeft(2, '0');
     final s = (d.inSeconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
+  }
+
+  /// " · 2 carros · 1 moto" solo cuando la reserva no es de un único carro.
+  static String _cupos(Map<String, dynamic> r) {
+    final motos = ((r['cantidadMotos'] as num?) ?? 0).toInt();
+    final total = ((r['cantidad'] as num?) ?? 1).toInt();
+    final carros = total - motos;
+    if (carros == 1 && motos == 0) return '';
+    final partes = [
+      if (carros > 0) '$carros ${carros == 1 ? 'carro' : 'carros'}',
+      if (motos > 0) '$motos ${motos == 1 ? 'moto' : 'motos'}',
+    ];
+    return ' · ${partes.join(' · ')}';
   }
 
   static String _llegada(DateTime d) {

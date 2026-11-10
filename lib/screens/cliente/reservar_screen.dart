@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/reserva_service.dart';
 import '../../theme/app_theme.dart';
+import 'pago_screen.dart';
 
 /// HU-06: elegir fecha y hora de llegada y retener un cupo mientras se paga.
 class ReservarScreen extends StatefulWidget {
@@ -36,12 +37,32 @@ class _ReservarScreenState extends State<ReservarScreen> {
   bool _cargando = false;
   String? _error;
   bool _sinCupo = false;
+  // Un contador por tipo: una misma reserva puede mezclar carros y motos
+  int _carros = 1;
+  int _motos = 0;
 
   Map<String, dynamic>? _reserva;
   Timer? _reloj;
   Duration _restante = Duration.zero;
 
   Map<String, dynamic> get _p => widget.parqueadero;
+
+  int get _libresCarros {
+    final libres = _p['cuposCarros'] ?? _p['cuposDisponibles'];
+    return libres is num ? libres.toInt() : 99;
+  }
+
+  int get _libresMotos {
+    final libres = _p['cuposMotos'];
+    return libres is num ? libres.toInt() : 0;
+  }
+
+  /// No se pueden pedir más cupos de los que hay libres de cada tipo.
+  int get _maxCarros => _libresCarros;
+  int get _maxMotos => _libresMotos;
+
+  /// El parqueadero tiene cupos de motos aparte de los de carros.
+  bool get _tieneMotos => ((_p['capacidadMotos'] as num?) ?? 0) > 0;
 
   @override
   void initState() {
@@ -106,6 +127,8 @@ class _ReservarScreenState extends State<ReservarScreen> {
       clienteId: widget.clienteId,
       parqueaderoId: (_p['id'] as num).toInt(),
       llegada: llegada,
+      cantidadCarros: _carros,
+      cantidadMotos: _motos,
     );
     if (!mounted) return;
     if (resultado['success'] == true) {
@@ -133,6 +156,19 @@ class _ReservarScreenState extends State<ReservarScreen> {
     _reloj = Timer.periodic(const Duration(seconds: 1), (_) => tick());
   }
 
+  Future<void> _irAPagar() async {
+    final pago = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => PagoScreen(reserva: _reserva!, parqueadero: _p),
+      ),
+    );
+    // Aprobado: la reserva ya no necesita la cuenta regresiva (la confirmación es HU-08)
+    if (pago != null && mounted) {
+      _reloj?.cancel();
+      Navigator.of(context).pop(pago);
+    }
+  }
+
   void _reservarDeNuevo() {
     _reloj?.cancel();
     setState(() {
@@ -155,7 +191,8 @@ class _ReservarScreenState extends State<ReservarScreen> {
   // ---------------------------------------------------------------- formulario
 
   Widget _formulario() {
-    final puedeReservar = _llegada != null && !_cargando;
+    final puedeReservar =
+        _llegada != null && !_cargando && _carros + _motos >= 1;
     return Column(
       children: [
         Expanded(
@@ -239,6 +276,24 @@ class _ReservarScreenState extends State<ReservarScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
+                    _Contador(
+                      prefijo: 'Carros',
+                      etiqueta: 'Carros',
+                      valor: _carros,
+                      puedeBajar: _carros > 0 && _carros + _motos > 1,
+                      puedeSubir: _carros < _maxCarros,
+                      onCambio: (delta) => setState(() => _carros += delta),
+                    ),
+                    if (_tieneMotos)
+                      _Contador(
+                        prefijo: 'Motos',
+                        etiqueta: 'Motos',
+                        valor: _motos,
+                        puedeBajar: _motos > 0 && _carros + _motos > 1,
+                        puedeSubir: _motos < _maxMotos,
+                        onCambio: (delta) => setState(() => _motos += delta),
+                      ),
+                    const SizedBox(height: 18),
                     Row(
                       children: [
                         Container(
@@ -257,7 +312,7 @@ class _ReservarScreenState extends State<ReservarScreen> {
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Text(
-                            'Tu cupo queda retenido unos minutos mientras pagas',
+                            'Tus cupos quedan retenidos unos minutos mientras pagas',
                             style: TextStyle(fontSize: 13, height: 1.35),
                           ),
                         ),
@@ -268,7 +323,10 @@ class _ReservarScreenState extends State<ReservarScreen> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: 16),
-                _Aviso(texto: _error!, sinCupo: _sinCupo),
+                _Aviso(
+                  texto: _error!,
+                  sinCupo: _sinCupo && _carros == 1 && _motos == 0,
+                ),
               ],
             ],
           ),
@@ -393,21 +451,28 @@ class _ReservarScreenState extends State<ReservarScreen> {
                     ),
                     const Divider(height: 24, color: AppColors.borde),
                     _Fila('Reserva', '#${_reserva!['id']}'),
+                    const Divider(height: 24, color: AppColors.borde),
+                    _Fila('Cupos', _textoCupos(_reserva!)),
                   ],
                 ),
               ),
             ],
           ),
         ),
-        if (vencida)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: FilledButton(
-              key: const Key('botonReservarDeNuevo'),
-              onPressed: _reservarDeNuevo,
-              child: const Text('Reservar de nuevo'),
-            ),
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: vencida
+              ? FilledButton(
+                  key: const Key('botonReservarDeNuevo'),
+                  onPressed: _reservarDeNuevo,
+                  child: const Text('Reservar de nuevo'),
+                )
+              : FilledButton(
+                  key: const Key('botonIrAPagar'),
+                  onPressed: _irAPagar,
+                  child: const Text('Pagar ahora'),
+                ),
+        ),
       ],
     );
   }
@@ -428,6 +493,18 @@ class _ReservarScreenState extends State<ReservarScreen> {
     'nov',
     'dic',
   ];
+
+  /// "2 carros · 1 moto", con el singular y el plural que corresponden.
+  static String _textoCupos(Map<String, dynamic> reserva) {
+    final motos = ((reserva['cantidadMotos'] as num?) ?? 0).toInt();
+    final total = ((reserva['cantidad'] as num?) ?? 1).toInt();
+    final carros = ((reserva['cantidadCarros'] as num?) ?? (total - motos)).toInt();
+    final partes = [
+      if (carros > 0) '$carros ${carros == 1 ? 'carro' : 'carros'}',
+      if (motos > 0) '$motos ${motos == 1 ? 'moto' : 'motos'}',
+    ];
+    return partes.join(' · ');
+  }
 
   String _textoFecha(DateTime d) => '${d.day} ${_meses[d.month - 1]}';
 
@@ -489,6 +566,10 @@ class _TarjetaParqueadero extends StatelessWidget {
     final cupos = parqueadero['cuposDisponibles'];
     final tarifa = parqueadero['tarifaHora'];
     final hayCupos = cupos is num ? cupos > 0 : null;
+    final tieneMotos = ((parqueadero['capacidadMotos'] as num?) ?? 0) > 0;
+    final carros = parqueadero['cuposCarros'] ?? cupos;
+    final motos = parqueadero['cuposMotos'] ?? 0;
+    final tarifaMoto = parqueadero['tarifaHoraMoto'];
     return _Tarjeta(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -555,6 +636,11 @@ class _TarjetaParqueadero extends StatelessWidget {
             'Abierto ${_hhmm(parqueadero['horaInicio'])} – ${_hhmm(parqueadero['horaFin'])}',
             style: const TextStyle(color: AppColors.textoSuave, fontSize: 13),
           ),
+          if (tieneMotos && tarifaMoto is num)
+            Text(
+              'Moto: \$${_miles(tarifaMoto)} / hr',
+              style: const TextStyle(color: AppColors.textoSuave, fontSize: 13),
+            ),
           if (hayCupos != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -578,9 +664,15 @@ class _TarjetaParqueadero extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    hayCupos ? 'cupos disponibles' : 'sin cupos disponibles',
-                    style: const TextStyle(fontSize: 13),
+                  Expanded(
+                    child: Text(
+                      !hayCupos
+                          ? 'sin cupos disponibles'
+                          : tieneMotos
+                          ? 'cupos: $carros carros · $motos motos'
+                          : 'cupos disponibles',
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ),
                 ],
               ),
@@ -719,6 +811,61 @@ class _Aviso extends StatelessWidget {
               height: 1.35,
             ),
           ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Un contador de cupos con su tipo de vehículo: etiqueta, menos, cantidad y más.
+class _Contador extends StatelessWidget {
+  const _Contador({
+    required this.prefijo,
+    required this.etiqueta,
+    required this.valor,
+    required this.puedeBajar,
+    required this.puedeSubir,
+    required this.onCambio,
+  });
+  final String prefijo;
+  final String etiqueta;
+  final int valor;
+  final bool puedeBajar;
+  final bool puedeSubir;
+  final void Function(int delta) onCambio;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            etiqueta,
+            style: const TextStyle(
+              color: AppColors.textoSuave,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        IconButton.filledTonal(
+          key: Key('menos$prefijo'),
+          onPressed: puedeBajar ? () => onCambio(-1) : null,
+          icon: const Icon(Icons.remove),
+        ),
+        SizedBox(
+          width: 44,
+          child: Text(
+            '$valor',
+            key: Key('cantidad$prefijo'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+        ),
+        IconButton.filledTonal(
+          key: Key('mas$prefijo'),
+          onPressed: puedeSubir ? () => onCambio(1) : null,
+          icon: const Icon(Icons.add),
         ),
       ],
     ),

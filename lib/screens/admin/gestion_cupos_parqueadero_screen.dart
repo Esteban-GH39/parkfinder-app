@@ -33,46 +33,83 @@ class _DetalleParqueaderoScreenState
 
   late int _cuposDisponibles;
   late int _capacidadTotal;
+  late int _capacidadMotos;
+  late int _cuposMotos;
+  bool _verMotos = false;
   bool _isLoading = false;
+
+  bool get _tieneMotos => _capacidadMotos > 0;
+
+  /// Capacidad y cupos libres del tipo de vehículo que se está gestionando.
+  int get _capacidadTipo => _verMotos ? _capacidadMotos : _capacidadTotal - _capacidadMotos;
+  int get _libresTipo => _verMotos ? _cuposMotos : _cuposDisponibles - _cuposMotos;
 
   @override
   void initState() {
     super.initState();
     _capacidadTotal = widget.parqueadero.capacidadTotal ?? 0;
     _cuposDisponibles = widget.parqueadero.cuposDisponibles;
+    _capacidadMotos = widget.parqueadero.capacidadMotos;
+    _cuposMotos = widget.parqueadero.cuposMotos;
   }
 
   // METODO PARA MODIFICAR ACTUALIZAR CUPOS DISNPONIBLES CON LA API
   Future<void> _modificarCupos(int delta) async {
     final nuevoValor = _cuposDisponibles + delta;
+    final nuevosMotos = _cuposMotos + (_verMotos ? delta : 0);
 
     // Validación preventiva en Flutter
-    if (nuevoValor < 0) {
-      _mostrarSnackBar(
-        'No hay cupos disponibles para descontar.',
-        isError: true,
-      );
-      return;
-    }
-    if (nuevoValor > _capacidadTotal) {
-      _mostrarSnackBar(
-        'La cantidad de cupos no puede superar la capacidad total ($_capacidadTotal).',
-        isError: true,
-      );
-      return;
+    if (_tieneMotos) {
+      final tipo = _verMotos ? 'motos' : 'carros';
+      if (_libresTipo + delta < 0) {
+        _mostrarSnackBar('No hay cupos de $tipo disponibles para descontar.', isError: true);
+        return;
+      }
+      if (_libresTipo + delta > _capacidadTipo) {
+        _mostrarSnackBar(
+          'Los cupos de $tipo no pueden superar su capacidad ($_capacidadTipo).',
+          isError: true,
+        );
+        return;
+      }
+    } else {
+      if (nuevoValor < 0) {
+        _mostrarSnackBar(
+          'No hay cupos disponibles para descontar.',
+          isError: true,
+        );
+        return;
+      }
+      if (nuevoValor > _capacidadTotal) {
+        _mostrarSnackBar(
+          'La cantidad de cupos no puede superar la capacidad total ($_capacidadTotal).',
+          isError: true,
+        );
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
 
     try {
-      await _parqueaderoService.actualizarCuposDisponibles(
-        idParqueadero: widget.parqueadero.id,
-        idAdmin: widget.parqueadero.fk_parqueadero_admin,
-        nuevosCupos: nuevoValor,
-      );
+      if (_tieneMotos) {
+        await _parqueaderoService.actualizarCuposPorTipo(
+          idParqueadero: widget.parqueadero.id,
+          idAdmin: widget.parqueadero.fk_parqueadero_admin,
+          nuevosCupos: nuevoValor,
+          cuposMotos: nuevosMotos,
+        );
+      } else {
+        await _parqueaderoService.actualizarCuposDisponibles(
+          idParqueadero: widget.parqueadero.id,
+          idAdmin: widget.parqueadero.fk_parqueadero_admin,
+          nuevosCupos: nuevoValor,
+        );
+      }
 
       setState(() {
         _cuposDisponibles = nuevoValor;
+        _cuposMotos = nuevosMotos;
       });
 
       _mostrarSnackBar('Cupos actualizados correctamente.');
@@ -118,10 +155,9 @@ class _DetalleParqueaderoScreenState
 
   @override
   Widget build(BuildContext context) {
-    final ocupados = (_capacidadTotal - _cuposDisponibles).clamp(
-      0,
-      _capacidadTotal,
-    );
+    final capacidad = _tieneMotos ? _capacidadTipo : _capacidadTotal;
+    final libres = _tieneMotos ? _libresTipo : _cuposDisponibles;
+    final ocupados = (capacidad - libres).clamp(0, capacidad);
     final secundario = ElevatedButton.styleFrom(
       backgroundColor: AppColors.chip,
       foregroundColor: AppColors.texto,
@@ -178,22 +214,43 @@ class _DetalleParqueaderoScreenState
                       ),
                     ],
                   ),
+                  if (_tieneMotos) ...[
+                    const SizedBox(height: 18),
+                    SegmentedButton<bool>(
+                      key: const Key('tipoVehiculoGestion'),
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          label: Text('Carros'),
+                          icon: Icon(Icons.directions_car_outlined),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          label: Text('Motos'),
+                          icon: Icon(Icons.two_wheeler),
+                        ),
+                      ],
+                      selected: {_verMotos},
+                      onSelectionChanged: (v) =>
+                          setState(() => _verMotos = v.first),
+                    ),
+                  ],
                   const SizedBox(height: 22),
                   Row(
                     children: [
                       Expanded(
                         child: _Dato(
-                          valor: '$_cuposDisponibles',
-                          etiqueta: 'Cupos disponibles',
-                          color: _cuposDisponibles == 0
-                              ? AppColors.error
-                              : AppColors.texto,
+                          valor: '$libres',
+                          etiqueta: _tieneMotos
+                              ? (_verMotos ? 'Cupos de moto libres' : 'Cupos de carro libres')
+                              : 'Cupos disponibles',
+                          color: libres == 0 ? AppColors.error : AppColors.texto,
                         ),
                       ),
                       Expanded(
                         child: _Dato(
-                          valor: '$_capacidadTotal',
-                          etiqueta: 'Capacidad total',
+                          valor: '$capacidad',
+                          etiqueta: _tieneMotos ? 'Capacidad' : 'Capacidad total',
                           color: AppColors.textoSuave,
                         ),
                       ),
@@ -203,12 +260,10 @@ class _DetalleParqueaderoScreenState
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: LinearProgressIndicator(
-                      value: _capacidadTotal == 0
-                          ? 0
-                          : ocupados / _capacidadTotal,
+                      value: capacidad == 0 ? 0 : ocupados / capacidad,
                       minHeight: 8,
                       backgroundColor: AppColors.chip,
-                      color: _cuposDisponibles == 0
+                      color: libres == 0
                           ? AppColors.error
                           : AppColors.acento,
                     ),
@@ -232,14 +287,14 @@ class _DetalleParqueaderoScreenState
             ElevatedButton(
               style: secundario,
               onPressed: _isLoading ? null : () => _modificarCupos(-1),
-              child: const Text('Ingreso directo (-1 cupo)'),
+              child: Text(_tieneMotos ? 'Ingreso directo (-1 ${_verMotos ? 'moto' : 'carro'})' : 'Ingreso directo (-1 cupo)'),
             ),
             const SizedBox(height: 12),
             // Agrega un cupo disponible
             ElevatedButton(
               style: secundario,
               onPressed: _isLoading ? null : () => _modificarCupos(1),
-              child: const Text('Liberar cupo (+1 cupo)'),
+              child: Text(_tieneMotos ? 'Liberar cupo (+1 ${_verMotos ? 'moto' : 'carro'})' : 'Liberar cupo (+1 cupo)'),
             ),
           ],
         ),

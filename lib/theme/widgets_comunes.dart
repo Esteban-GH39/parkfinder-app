@@ -101,3 +101,37 @@ class CargandoEnBoton extends StatelessWidget {
     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
   );
 }
+
+/// Indica quién tiene la sesión abierta: cliente o administrador (dueño).
+class EtiquetaRol extends StatelessWidget {
+  const EtiquetaRol({super.key, required this.admin});
+  final bool admin;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: admin ? AppColors.lila : AppColors.acentoSuave,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          admin ? Icons.admin_panel_settings_outlined : Icons.person_outline,
+          size: 14,
+          color: admin ? const Color(0xFF6B54C9) : AppColors.acento,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          admin ? 'Administrador' : 'Cliente',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: admin ? const Color(0xFF6B54C9) : AppColors.acento,
+          ),
+        ),
+      ],
+    ),
+  );
+}

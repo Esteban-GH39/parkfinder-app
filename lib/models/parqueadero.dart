@@ -10,6 +10,12 @@ class Parqueadero {
   final double? tarifaHora;
   final double? tarifaDia;
   final double? tarifaNoche;
+  /// Parte de [capacidadTotal] que es de motos; el resto es de carros.
+  final int capacidadMotos;
+  /// Parte de los cupos disponibles que es de motos.
+  final int cuposMotos;
+  /// Tarifa por hora de la moto; null = paga lo mismo que el carro.
+  final double? tarifaHoraMoto;
   final double? latitud;
   final double? longitud;
   //VARIABLES NUEVAS BASADA EN EL DTO
@@ -31,6 +37,9 @@ class Parqueadero {
     this.tarifaHora,
     this.tarifaDia,
     this.tarifaNoche,
+    this.capacidadMotos = 0,
+    this.cuposMotos = 0,
+    this.tarifaHoraMoto,
     this.latitud,
     this.longitud,
     //VARIABLES NUEVAS BASADA EN EL DTO
@@ -56,6 +65,9 @@ class Parqueadero {
       tarifaHora: (json['tarifaHora'] as num?)?.toDouble(),
       tarifaDia: (json['tarifaDia'] as num?)?.toDouble(),
       tarifaNoche: (json['tarifaNoche'] as num?)?.toDouble(),
+      capacidadMotos: (json['capacidadMotos'] as num?)?.toInt() ?? 0,
+      cuposMotos: (json['cuposMotos'] as num?)?.toInt() ?? 0,
+      tarifaHoraMoto: (json['tarifaHoraMoto'] as num?)?.toDouble(),
       latitud: (json['latitud'] as num?)?.toDouble(),
       longitud: (json['longitud'] as num?)?.toDouble(),
       horaInicio: json['horaInicio'] as String? ?? '',
@@ -74,6 +86,8 @@ class Parqueadero {
     'tarifaHora': tarifaHora,
     'tarifaDia': tarifaDia,
     'tarifaNoche': tarifaNoche,
+    'capacidadMotos': capacidadMotos,
+    'tarifaHoraMoto': tarifaHoraMoto,
     'latitud': latitud,
     'longitud': longitud,
     //VARIABLES NUEVAS BASADA EN EL DTO
@@ -92,6 +106,8 @@ class Parqueadero {
     'tarifaHora': tarifaHora,
     'tarifaDia': tarifaDia,
     'tarifaNoche': tarifaNoche,
+    'capacidadMotos': capacidadMotos,
+    'tarifaHoraMoto': tarifaHoraMoto,
     'horaInicio': _horaONull(horaInicio),
     'horaFinal': _horaONull(horaFinal),
     'nombrePropietario': representante.trim(),
@@ -103,6 +119,11 @@ class Parqueadero {
 
   String get encargado =>
       representante.isNotEmpty ? representante : 'No especificado';
+
+  /// Cupos de carros: lo que no es de motos.
+  int get capacidadCarros => ((capacidadTotal ?? 0) - capacidadMotos).clamp(0, 1 << 30);
+  int get cuposCarros => (cuposDisponibles - cuposMotos).clamp(0, 1 << 30);
+  bool get tieneMotos => capacidadMotos > 0;
 
   int get cuposDisponibles {
     if (cuposDisponiblesApi != null) return cuposDisponiblesApi!;

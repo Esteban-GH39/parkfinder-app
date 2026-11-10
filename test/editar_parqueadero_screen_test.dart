@@ -37,6 +37,7 @@ class _ApiServiceFalso extends ApiService {
 
 Parqueadero parqueaderoDePrueba() => Parqueadero(
   id: 7,
+  fk_parqueadero_admin: 1,
   nombre: 'Parqueadero Centro',
   zona: 'Chapinero',
   direccion: 'Calle 53 #10-20',
@@ -74,6 +75,7 @@ void main() {
     await montar(tester, api);
 
     await tester.enterText(find.byType(TextFormField).at(0), '');
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pump();
 
@@ -87,7 +89,8 @@ void main() {
     await montar(tester, api);
 
     // Capacidad 50, se intentan 80 ocupados.
-    await tester.enterText(find.byType(TextFormField).at(5), '80');
+    await tester.enterText(find.byType(TextFormField).at(6), '80');
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pump();
 
@@ -99,7 +102,8 @@ void main() {
     final api = _ApiServiceFalso();
     await montar(tester, api);
 
-    await tester.enterText(find.byType(TextFormField).at(6), '-100');
+    await tester.enterText(find.byType(TextFormField).at(7), '-100');
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pump();
 
@@ -112,7 +116,8 @@ void main() {
     await montar(tester, api);
 
     await tester.enterText(find.byType(TextFormField).at(0), 'Parqueadero Norte');
-    await tester.enterText(find.byType(TextFormField).at(6), '3500');
+    await tester.enterText(find.byType(TextFormField).at(7), '3500');
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
 
@@ -131,6 +136,7 @@ void main() {
     );
     await montar(tester, api);
 
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
 
@@ -146,6 +152,7 @@ void main() {
     );
     await montar(tester, api);
 
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
 

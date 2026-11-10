@@ -5,6 +5,7 @@ import '../../models/comprobante.dart';
 import '../../models/parqueadero.dart';
 import '../../services/comprobante_service.dart';
 import '../../services/parqueadero_service.dart';
+import '../../services/reserva_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
 
@@ -15,6 +16,7 @@ class CodigoReservaScreen extends StatefulWidget {
   /// Permite inyectar servicios falsos en las pruebas.
   final ParqueaderoService? parqueaderoService;
   final ComprobanteService? comprobanteService;
+  final ReservaService? reservaService;
 
   const CodigoReservaScreen({
     super.key,
@@ -22,6 +24,7 @@ class CodigoReservaScreen extends StatefulWidget {
     required this.cuposDisponibles,
     this.parqueaderoService,
     this.comprobanteService,
+    this.reservaService,
   });
 
   @override
@@ -33,6 +36,8 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
       widget.comprobanteService ?? ComprobanteService();
   late final ParqueaderoService _parqueaderoService =
       widget.parqueaderoService ?? ParqueaderoService();
+  late final ReservaService _reservaService =
+      widget.reservaService ?? ReservaService();
   final TextEditingController _idComprobanteController =
       TextEditingController();
 
@@ -106,6 +111,23 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
       _mostrarSnackBar('Primero valide el comprobante de pago.', isError: true);
       return;
     }
+    // Comprobante de una reserva con pago: solo se anota como atendida. Sus cupos ya se
+    // descontaron al reservar, así que no se vuelve a descontar nada.
+    final reservaId = comprobante.reservaId;
+    if (reservaId != null) {
+      setState(() => _isLoading = true);
+      final resultado = await _reservaService.validar(reservaId);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      if (resultado['success'] == true) {
+        _mostrarSnackBar('Código validado. El cliente puede ingresar.');
+        Navigator.pop(context, _cuposDisponibles);
+      } else {
+        _mostrarSnackBar('${resultado['error']}', isError: true);
+      }
+      return;
+    }
+
     final nuevoValor = _cuposDisponibles - 1;
     if (nuevoValor < 0) {
       _mostrarSnackBar(
@@ -177,7 +199,7 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: const InputDecoration(
-                      hintText: 'Id del comprobante de pago',
+                      hintText: 'Ingresa el código de reserva',
                       prefixIcon: Icon(Icons.receipt_long_outlined),
                     ),
                     onSubmitted: (_) => _validarComprobante(),
@@ -216,7 +238,7 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
   /// Datos del comprobante consultado
   Widget _buildDetalleComprobante(Comprobante c) {
     final filas = {
-      'Id comprobante': '${c.id}',
+      'Código': '${c.id}',
       'Fecha generado': c.fechaGenerado ?? '-',
       'Valor pago': c.valorPago != null
           ? '\$${c.valorPago!.toStringAsFixed(0)}'

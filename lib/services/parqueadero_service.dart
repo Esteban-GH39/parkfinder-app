@@ -53,6 +53,33 @@ class ParqueaderoService {
     }
   }
 
+  //METODO PARA GESTIONAR CUPOS DE CARROS Y MOTOS: nuevosCupos es el total libre y cuposMotos la parte de motos
+  Future<bool> actualizarCuposPorTipo({
+    required int idParqueadero,
+    required int idAdmin,
+    required int nuevosCupos,
+    required int cuposMotos,
+  }) async {
+    final url = Uri.parse(ApiConfig.actualizarCuposParqueadero(idParqueadero));
+
+    final response = await http.patch(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'id': idAdmin,
+        'cuposDisponibles': nuevosCupos,
+        'cuposMotos': cuposMotos,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return true;
+    }
+    throw Exception(response.body.isNotEmpty
+        ? response.body
+        : 'Error al actualizar cupos (${response.statusCode})');
+  }
+
   //METODO PARA GESTIONAR CUPOS DISPONIBLES DEL PARQUEADERO
   Future<bool> actualizarCuposDisponibles({
     required int idParqueadero,
