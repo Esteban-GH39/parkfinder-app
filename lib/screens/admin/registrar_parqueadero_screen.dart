@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../models/parqueadero.dart';
 import '../../services/api_service.dart';
+import '../../services/sesion_service.dart';
 
 /// HU-18: el administrador registra un nuevo parqueadero.
 
@@ -51,12 +52,13 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
   final _direccionCtrl = TextEditingController();
   final _representanteCtrl = TextEditingController();
   final _capacidadCtrl = TextEditingController();
+  final _motosCtrl = TextEditingController();
+  final _tarifaMotoCtrl = TextEditingController();
   final _tarifaHoraCtrl = TextEditingController();
   final _tarifaDiaCtrl = TextEditingController();
   final _tarifaNocheCtrl = TextEditingController();
   final _horaInicioCtrl = TextEditingController();
   final _horaFinalCtrl = TextEditingController();
-  final _idAdminCtrl = TextEditingController();
 
   bool _guardando = false;
   String? _errorMensaje;
@@ -69,12 +71,13 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
     _direccionCtrl.dispose();
     _representanteCtrl.dispose();
     _capacidadCtrl.dispose();
+    _motosCtrl.dispose();
+    _tarifaMotoCtrl.dispose();
     _tarifaHoraCtrl.dispose();
     _tarifaDiaCtrl.dispose();
     _tarifaNocheCtrl.dispose();
     _horaInicioCtrl.dispose();
     _horaFinalCtrl.dispose();
-    _idAdminCtrl.dispose();
     super.dispose();
   }
 
@@ -165,6 +168,14 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
   Future<void> _registrar() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // El parqueadero queda a nombre del dueño que inició sesión
+    final adminId = SesionService.instancia.adminId;
+    if (adminId == null) {
+      setState(() => _errorMensaje =
+          'No se pudo identificar tu cuenta de dueño. Inicia sesión de nuevo.');
+      return;
+    }
+
     setState(() {
       _guardando = true;
       _errorMensaje = null;
@@ -172,12 +183,18 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
 
     final parqueadero = Parqueadero(
       id: 0, // el backend asigna el id
-      fk_parqueadero_admin: int.tryParse(_idAdminCtrl.text.trim()) ?? 0,
+      fk_parqueadero_admin: adminId,
       nombre: _nombreCtrl.text.trim(),
       zona: _localidadOficial(_zonaCtrl.text) ?? _zonaCtrl.text.trim(),
       direccion: _direccionCtrl.text.trim(),
       representante: _representanteCtrl.text.trim(),
-      capacidadTotal: int.tryParse(_capacidadCtrl.text.trim()),
+      // capacidadTotal es carros + motos; capacidadMotos va aparte
+      capacidadTotal: (int.tryParse(_capacidadCtrl.text.trim()) ?? 0) +
+          (int.tryParse(_motosCtrl.text.trim()) ?? 0),
+      capacidadMotos: int.tryParse(_motosCtrl.text.trim()) ?? 0,
+      tarifaHoraMoto: _tarifaMotoCtrl.text.trim().isEmpty
+          ? null
+          : _parsearNumero(_tarifaMotoCtrl.text),
       tarifaHora: _parsearNumero(_tarifaHoraCtrl.text),
       tarifaDia: _parsearNumero(_tarifaDiaCtrl.text),
       tarifaNoche: _parsearNumero(_tarifaNocheCtrl.text),
@@ -332,15 +349,6 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextFormField(
-                controller: _idAdminCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'ID del Administrador (Temporal)',
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: _validarCapacidad, // Reutiliza el validador de número mayor a 0
-              ),
-              TextFormField(
                 controller: _nombreCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Nombre Parqueadero',
@@ -364,12 +372,29 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
               ),
               TextFormField(
                 controller: _capacidadCtrl,
-                decoration: const InputDecoration(labelText: 'Capacidad total'),
+                decoration: const InputDecoration(labelText: 'Cupos de carros'),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 validator: _validarCapacidad,
               ),
-              _campoTarifa(_tarifaHoraCtrl, 'Tarifa por hora'),
+              TextFormField(
+                key: const Key('campoCuposMotos'),
+                controller: _motosCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Cupos de motos (déjalo vacío si no tiene)',
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+              _campoTarifa(_tarifaHoraCtrl, 'Tarifa por hora (carro)'),
+              TextFormField(
+                key: const Key('campoTarifaMoto'),
+                controller: _tarifaMotoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Tarifa por hora de moto (opcional)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
               _campoTarifa(_tarifaDiaCtrl, 'Tarifa por día'),
               _campoTarifa(_tarifaNocheCtrl, 'Tarifa por noche'),
               TextFormField(

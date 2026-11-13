@@ -39,8 +39,17 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
   late final _representanteCtrl = TextEditingController(
     text: widget.parqueadero.representante,
   );
+  // La capacidad de carros es lo que no es de motos
   late final _capacidadCtrl = TextEditingController(
-    text: widget.parqueadero.capacidadTotal?.toString() ?? '',
+    text: widget.parqueadero.capacidadTotal == null
+        ? ''
+        : widget.parqueadero.capacidadCarros.toString(),
+  );
+  late final _motosCtrl = TextEditingController(
+    text: widget.parqueadero.capacidadMotos.toString(),
+  );
+  late final _tarifaMotoCtrl = TextEditingController(
+    text: widget.parqueadero.tarifaHoraMoto?.toString() ?? '',
   );
   late final _ocupadosCtrl = TextEditingController(
     text: widget.parqueadero.cuposOcupados?.toString() ?? '',
@@ -62,10 +71,19 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
     _direccionCtrl.dispose();
     _representanteCtrl.dispose();
     _capacidadCtrl.dispose();
+    _motosCtrl.dispose();
+    _tarifaMotoCtrl.dispose();
     _ocupadosCtrl.dispose();
     _tarifaHoraCtrl.dispose();
     _tarifaDiaCtrl.dispose();
     super.dispose();
+  }
+
+  /// Carros + motos: es lo que el backend guarda como capacidad total.
+  int? get _capacidadTotalForm {
+    final carros = int.tryParse(_capacidadCtrl.text);
+    if (carros == null) return null;
+    return carros + (int.tryParse(_motosCtrl.text) ?? 0);
   }
 
   Future<void> _guardar() async {
@@ -81,7 +99,9 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
       'zona': _zonaCtrl.text.trim(),
       'direccion': _direccionCtrl.text.trim(),
       'representante': _representanteCtrl.text.trim(),
-      'capacidadTotal': int.tryParse(_capacidadCtrl.text),
+      'capacidadTotal': _capacidadTotalForm,
+      'capacidadMotos': int.tryParse(_motosCtrl.text) ?? 0,
+      'tarifaHoraMoto': double.tryParse(_tarifaMotoCtrl.text),
       'cuposOcupados': int.tryParse(_ocupadosCtrl.text),
       'tarifaHora': double.tryParse(_tarifaHoraCtrl.text),
       'tarifaDia': double.tryParse(_tarifaDiaCtrl.text),
@@ -131,7 +151,7 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
     if (ocupados == null) return 'Debe ser un número';
     if (ocupados < 0) return 'No puede ser negativo';
 
-    final capacidad = int.tryParse(_capacidadCtrl.text);
+    final capacidad = _capacidadTotalForm;
     if (capacidad != null && ocupados > capacidad) {
       return 'No puede superar la capacidad ($capacidad)';
     }
@@ -194,7 +214,14 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
               ),
               TextFormField(
                 controller: _capacidadCtrl,
-                decoration: const InputDecoration(labelText: 'Capacidad total'),
+                decoration: const InputDecoration(labelText: 'Cupos de carros'),
+                keyboardType: TextInputType.number,
+                validator: _validarEnteroNoNegativo,
+              ),
+              TextFormField(
+                key: const Key('campoCuposMotos'),
+                controller: _motosCtrl,
+                decoration: const InputDecoration(labelText: 'Cupos de motos'),
                 keyboardType: TextInputType.number,
                 validator: _validarEnteroNoNegativo,
               ),
@@ -206,7 +233,16 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
               ),
               TextFormField(
                 controller: _tarifaHoraCtrl,
-                decoration: const InputDecoration(labelText: 'Tarifa por hora'),
+                decoration: const InputDecoration(labelText: 'Tarifa por hora (carro)'),
+                keyboardType: TextInputType.number,
+                validator: _validarDecimalNoNegativo,
+              ),
+              TextFormField(
+                key: const Key('campoTarifaMoto'),
+                controller: _tarifaMotoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Tarifa por hora de moto (opcional)',
+                ),
                 keyboardType: TextInputType.number,
                 validator: _validarDecimalNoNegativo,
               ),

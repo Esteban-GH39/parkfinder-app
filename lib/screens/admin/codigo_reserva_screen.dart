@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../../models/comprobante.dart';
 import '../../models/parqueadero.dart';
 import '../../services/comprobante_service.dart';
 import '../../services/parqueadero_service.dart';
+import '../../services/reserva_service.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/widgets_comunes.dart';
 
 class CodigoReservaScreen extends StatefulWidget {
   final Parqueadero parqueadero;
@@ -12,6 +16,7 @@ class CodigoReservaScreen extends StatefulWidget {
   /// Permite inyectar servicios falsos en las pruebas.
   final ParqueaderoService? parqueaderoService;
   final ComprobanteService? comprobanteService;
+  final ReservaService? reservaService;
 
   const CodigoReservaScreen({
     super.key,
@@ -19,6 +24,7 @@ class CodigoReservaScreen extends StatefulWidget {
     required this.cuposDisponibles,
     this.parqueaderoService,
     this.comprobanteService,
+    this.reservaService,
   });
 
   @override
@@ -30,6 +36,8 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
       widget.comprobanteService ?? ComprobanteService();
   late final ParqueaderoService _parqueaderoService =
       widget.parqueaderoService ?? ParqueaderoService();
+  late final ReservaService _reservaService =
+      widget.reservaService ?? ReservaService();
   final TextEditingController _idComprobanteController =
       TextEditingController();
 
@@ -69,8 +77,9 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
 
       // Solo se muestran comprobantes del parqueadero seleccionado
       if (comprobante.fkComprobanteParqueadero != widget.parqueadero.id) {
-        setState(() =>
-            _error = 'El comprobante $id no pertenece a este parqueadero.');
+        setState(
+          () => _error = 'El comprobante $id no pertenece a este parqueadero.',
+        );
         return;
       }
 
@@ -102,10 +111,29 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
       _mostrarSnackBar('Primero valide el comprobante de pago.', isError: true);
       return;
     }
+    // Comprobante de una reserva con pago: solo se anota como atendida. Sus cupos ya se
+    // descontaron al reservar, así que no se vuelve a descontar nada.
+    final reservaId = comprobante.reservaId;
+    if (reservaId != null) {
+      setState(() => _isLoading = true);
+      final resultado = await _reservaService.validar(reservaId);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      if (resultado['success'] == true) {
+        _mostrarSnackBar('Código validado. El cliente puede ingresar.');
+        Navigator.pop(context, _cuposDisponibles);
+      } else {
+        _mostrarSnackBar('${resultado['error']}', isError: true);
+      }
+      return;
+    }
+
     final nuevoValor = _cuposDisponibles - 1;
     if (nuevoValor < 0) {
-      _mostrarSnackBar('No hay cupos disponibles para descontar.',
-          isError: true);
+      _mostrarSnackBar(
+        'No hay cupos disponibles para descontar.',
+        isError: true,
+      );
       return;
     }
 
@@ -136,7 +164,7 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(mensaje),
-        backgroundColor: isError ? Colors.red.shade700 : Colors.green.shade700,
+        backgroundColor: isError ? AppColors.error : AppColors.exito,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -145,47 +173,60 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Código de reserva'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Código de reserva'), centerTitle: true),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: _idComprobanteController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: 'Id del comprobante de pago',
-              ),
-              onSubmitted: (_) => _validarComprobante(),
-            ),
-            const SizedBox(height: 20),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    onPressed: _validarComprobante,
-                    child: const Text('Validar comprobante'),
+            TarjetaBlanca(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.parqueadero.nombre.isNotEmpty
+                        ? widget.parqueadero.nombre
+                        : 'Parqueadero ${widget.parqueadero.id}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textoSuave,
+                    ),
                   ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _idComprobanteController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      hintText: 'Ingresa el código de reserva',
+                      prefixIcon: Icon(Icons.receipt_long_outlined),
+                    ),
+                    onSubmitted: (_) => _validarComprobante(),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    AvisoError(texto: _error!),
+                  ],
+                  const SizedBox(height: 18),
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton(
+                          onPressed: _validarComprobante,
+                          child: const Text('Validar comprobante'),
+                        ),
+                ],
+              ),
+            ),
             if (_comprobante != null) ...[
-              const SizedBox(height: 20),
-              ..._buildDetalleComprobante(_comprobante!),
+              const SizedBox(height: 16),
+              _buildDetalleComprobante(_comprobante!),
             ],
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed:
-                  _isLoading || _comprobante == null ? null : _validarReserva,
+              onPressed: _isLoading || _comprobante == null
+                  ? null
+                  : _validarReserva,
               child: const Text('Validar reserva'),
             ),
           ],
@@ -195,24 +236,48 @@ class _CodigoReservaScreenState extends State<CodigoReservaScreen> {
   }
 
   /// Datos del comprobante consultado
-  List<Widget> _buildDetalleComprobante(Comprobante c) {
+  Widget _buildDetalleComprobante(Comprobante c) {
     final filas = {
-      'Id comprobante': '${c.id}',
+      'Código': '${c.id}',
       'Fecha generado': c.fechaGenerado ?? '-',
-      'Valor pago':
-          c.valorPago != null ? '\$${c.valorPago!.toStringAsFixed(0)}' : '-',
+      'Valor pago': c.valorPago != null
+          ? '\$${c.valorPago!.toStringAsFixed(0)}'
+          : '-',
       'Medio de pago': c.medioPago ?? '-',
       'Estado transacción': c.estadoTransaccion ?? '-',
       'Id cliente': '${c.fkComprobanteCliente ?? '-'}',
       'Id parqueadero': '${c.fkComprobanteParqueadero ?? '-'}',
     };
-    return [
-      for (final fila in filas.entries)
-        ListTile(
-          dense: true,
-          title: Text(fila.key),
-          subtitle: Text(fila.value),
-        ),
-    ];
+    return TarjetaBlanca(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+      child: Column(
+        children: [
+          for (final fila in filas.entries)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      fila.key,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textoSuave,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    fila.value,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

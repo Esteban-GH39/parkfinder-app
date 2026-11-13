@@ -7,6 +7,9 @@ class Comprobante {
   final int? fkComprobanteCliente;
   final int? fkComprobanteParqueadero;
 
+  /// Reserva que pagó este comprobante (null en comprobantes viejos).
+  final int? reservaId;
+
   Comprobante({
     required this.id,
     this.fechaGenerado,
@@ -15,6 +18,7 @@ class Comprobante {
     this.estadoTransaccion,
     this.fkComprobanteCliente,
     this.fkComprobanteParqueadero,
+    this.reservaId,
   });
 
   factory Comprobante.fromJson(Map<String, dynamic> json) {
@@ -31,6 +35,7 @@ class Comprobante {
       fkComprobanteCliente: (json['fk_comprobante_cliente'] as num?)?.toInt(),
       fkComprobanteParqueadero:
           (json['fk_comprobante_parqueadero'] as num?)?.toInt(),
+      reservaId: (json['reservaId'] as num?)?.toInt(),
     );
   }
 }
