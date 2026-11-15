@@ -3,19 +3,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:parkfinder_app/models/comprobante.dart';
+import 'package:parkfinder_app/models/estadia.dart';
 import 'package:parkfinder_app/screens/admin/codigo_reserva_screen.dart';
 
+import 'estadia_servicios_falsos.dart';
 import 'hu21_servicios_falsos.dart';
 
-/// HU-21: validación del comprobante de pago y descuento del cupo reservado.
+/// HU-21: validación del comprobante de pago, placa del vehículo y descuento del cupo.
 void main() {
   late ParqueaderoServiceFalso parqueaderos;
   late ComprobanteServiceFalso comprobantes;
+  late EstadiaServiceFalso estadias;
+  late ReservaServiceFalso reservas;
   int? cuposDevueltos;
 
   setUp(() {
     parqueaderos = ParqueaderoServiceFalso();
     comprobantes = ComprobanteServiceFalso(comprobante: comprobanteDePrueba());
+    estadias = EstadiaServiceFalso();
+    reservas = ReservaServiceFalso();
     cuposDevueltos = null;
   });
 
@@ -34,6 +40,8 @@ void main() {
                     cuposDisponibles: cuposDisponibles,
                     parqueaderoService: parqueaderos,
                     comprobanteService: comprobantes,
+                    estadiaService: estadias,
+                    reservaService: reservas,
                   ),
                 ),
               );
@@ -51,6 +59,14 @@ void main() {
     await tester.enterText(find.byType(TextField), id);
     await tester.tap(find.text('Validar comprobante'));
     await tester.pump();
+  }
+
+  Future<void> digitarPlaca(WidgetTester tester, String placa, {int i = 0}) =>
+      tester.enterText(find.byKey(Key('placa_$i')), placa);
+
+  Future<void> validarReserva(WidgetTester tester) async {
+    await tester.ensureVisible(find.text('Validar reserva'));
+    await tester.tap(find.text('Validar reserva'));
   }
 
   ElevatedButton botonValidarReserva(WidgetTester tester) =>
@@ -187,31 +203,92 @@ void main() {
     expect(find.text('APROBADO'), findsOneWidget);
   });
 
-  testWidgets('validar la reserva descuenta un cupo y cierra con el nuevo valor',
+  testWidgets('validar la reserva registra la placa, descuenta un cupo y cierra con el nuevo valor',
       (tester) async {
     await montar(tester);
 
     await validarComprobante(tester, '15');
-    await tester.ensureVisible(find.text('Validar reserva'));
-    await tester.tap(find.text('Validar reserva'));
+    expect(find.text('Placa del vehículo'), findsWidgets);
+    await digitarPlaca(tester, 'abc123');
+    await validarReserva(tester);
     await tester.pumpAndSettle();
 
-    expect(parqueaderos.idParqueaderoEnviado, 7);
-    expect(parqueaderos.idAdminEnviado, 3);
-    expect(parqueaderos.cuposEnviados, 29);
+    // Sin reserva asociada el backend registra la placa y descuenta el cupo
+    expect(estadias.ingresosDirectos.single.placa, 'ABC123');
+    expect(estadias.ingresosDirectos.single.tipo, TipoVehiculo.carro);
+    expect(parqueaderos.vecesActualizado, 0);
     expect(find.byType(CodigoReservaScreen), findsNothing);
     expect(cuposDevueltos, 29);
+  });
+
+  testWidgets('sin placa no valida la reserva', (tester) async {
+    await montar(tester);
+
+    await validarComprobante(tester, '15');
+    await validarReserva(tester);
+    await tester.pump();
+
+    expect(estadias.ingresosDirectos, isEmpty);
+    expect(find.text('Digita la placa del vehículo.'), findsOneWidget);
+    expect(find.byType(CodigoReservaScreen), findsOneWidget);
+  });
+
+  testWidgets('con una placa inválida no valida la reserva', (tester) async {
+    await montar(tester);
+
+    await validarComprobante(tester, '15');
+    await digitarPlaca(tester, 'AB1');
+    await validarReserva(tester);
+    await tester.pump();
+
+    expect(estadias.ingresosDirectos, isEmpty);
+    expect(
+      find.text('La placa debe tener entre 5 y 7 letras o números (ej. ABC123).'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('con reserva pide una placa por vehículo y valida el código',
+      (tester) async {
+    comprobantes.comprobante = Comprobante(
+      id: 15,
+      estadoTransaccion: 'APROBADO',
+      fkComprobanteParqueadero: 7,
+      reservaId: 9,
+    );
+    reservas.reserva = {'cantidad': 2, 'cantidadCarros': 1, 'cantidadMotos': 1};
+    await montar(tester);
+
+    await validarComprobante(tester, '15');
+
+    expect(reservas.idConsultado, 9);
+    expect(find.text('Placa carro 1'), findsOneWidget);
+    expect(find.text('Placa moto 1'), findsOneWidget);
+
+    // Solo llegó el carro: la placa de la moto queda vacía
+    await digitarPlaca(tester, 'ABC123');
+    await validarReserva(tester);
+    await tester.pumpAndSettle();
+
+    final ingreso = estadias.ingresosConReserva.single;
+    expect(ingreso.reservaId, 9);
+    expect(ingreso.vehiculos.single.placa, 'ABC123');
+    expect(ingreso.vehiculos.single.tipo, TipoVehiculo.carro);
+    expect(estadias.ingresosDirectos, isEmpty);
+    // Los cupos de la reserva ya se habían descontado al reservar
+    expect(cuposDevueltos, 30);
   });
 
   testWidgets('sin cupos disponibles no valida la reserva', (tester) async {
     await montar(tester, cuposDisponibles: 0);
 
     await validarComprobante(tester, '15');
-    await tester.ensureVisible(find.text('Validar reserva'));
-    await tester.tap(find.text('Validar reserva'));
+    await digitarPlaca(tester, 'ABC123');
+    await validarReserva(tester);
     await tester.pump();
 
     expect(parqueaderos.vecesActualizado, 0);
+    expect(estadias.ingresosDirectos, isEmpty);
     expect(
       find.text('No hay cupos disponibles para descontar.'),
       findsOneWidget,
@@ -221,15 +298,18 @@ void main() {
 
   testWidgets('si el backend rechaza la reserva se queda en la pantalla',
       (tester) async {
-    parqueaderos.errorActualizar = Exception('Error al actualizar cupos (500)');
+    estadias.error = Exception('El vehículo ABC123 ya está registrado dentro de un parqueadero');
     await montar(tester);
 
     await validarComprobante(tester, '15');
-    await tester.ensureVisible(find.text('Validar reserva'));
-    await tester.tap(find.text('Validar reserva'));
+    await digitarPlaca(tester, 'ABC123');
+    await validarReserva(tester);
     await tester.pump();
 
-    expect(find.text('Error al actualizar cupos (500)'), findsOneWidget);
+    expect(
+      find.text('El vehículo ABC123 ya está registrado dentro de un parqueadero'),
+      findsOneWidget,
+    );
     expect(find.byType(CodigoReservaScreen), findsOneWidget);
     expect(cuposDevueltos, isNull);
   });

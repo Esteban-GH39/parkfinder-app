@@ -5,7 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:parkfinder_app/models/parqueadero.dart';
 import 'package:parkfinder_app/screens/admin/codigo_reserva_screen.dart';
 import 'package:parkfinder_app/screens/admin/gestion_cupos_parqueadero_screen.dart';
+import 'package:parkfinder_app/screens/admin/ingreso_vehiculo_screen.dart';
+import 'package:parkfinder_app/screens/admin/salida_vehiculo_screen.dart';
 
+import 'estadia_servicios_falsos.dart';
 import 'hu21_servicios_falsos.dart';
 
 /// HU-21: el administrador descuenta o libera cupos de un parqueadero.
@@ -15,6 +18,7 @@ void main() {
     ParqueaderoServiceFalso api, {
     Parqueadero? parqueadero,
     ComprobanteServiceFalso? comprobantes,
+    EstadiaServiceFalso? estadias,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -22,9 +26,15 @@ void main() {
           parqueadero: parqueadero ?? parqueaderoDePrueba(),
           parqueaderoService: api,
           comprobanteService: comprobantes,
+          estadiaService: estadias ?? EstadiaServiceFalso(),
         ),
       ),
     );
+  }
+
+  Future<void> tocar(WidgetTester tester, String texto) async {
+    await tester.ensureVisible(find.text(texto));
+    await tester.tap(find.text(texto));
   }
 
   testWidgets('muestra el parqueadero, la capacidad y los cupos',
@@ -36,15 +46,17 @@ void main() {
     expect(find.text('50'), findsOneWidget);
     expect(find.text('30'), findsOneWidget);
     expect(find.text('Código de reserva'), findsOneWidget);
-    expect(find.text('Ingreso directo (-1 cupo)'), findsOneWidget);
-    expect(find.text('Liberar cupo (+1 cupo)'), findsOneWidget);
+    expect(find.text('Ingreso directo'), findsOneWidget);
+    expect(find.text('Liberar cupo'), findsOneWidget);
+    expect(find.text('-1 cupo'), findsOneWidget);
+    expect(find.text('+1 cupo'), findsOneWidget);
   });
 
-  testWidgets('ingreso directo descuenta un cupo', (tester) async {
+  testWidgets('el ajuste manual -1 descuenta un cupo', (tester) async {
     final api = ParqueaderoServiceFalso();
     await montar(tester, api);
 
-    await tester.tap(find.text('Ingreso directo (-1 cupo)'));
+    await tocar(tester, '-1 cupo');
     await tester.pump();
 
     expect(api.vecesActualizado, 1);
@@ -55,18 +67,18 @@ void main() {
     expect(find.text('Cupos actualizados correctamente.'), findsOneWidget);
   });
 
-  testWidgets('liberar cupo agrega un cupo', (tester) async {
+  testWidgets('el ajuste manual +1 agrega un cupo', (tester) async {
     final api = ParqueaderoServiceFalso();
     await montar(tester, api);
 
-    await tester.tap(find.text('Liberar cupo (+1 cupo)'));
+    await tocar(tester, '+1 cupo');
     await tester.pump();
 
     expect(api.cuposEnviados, 31);
     expect(find.text('31'), findsOneWidget);
   });
 
-  testWidgets('sin cupos no permite el ingreso directo', (tester) async {
+  testWidgets('sin cupos el ajuste manual no descuenta', (tester) async {
     final api = ParqueaderoServiceFalso();
     await montar(
       tester,
@@ -74,7 +86,7 @@ void main() {
       parqueadero: parqueaderoDePrueba(cuposDisponibles: 0),
     );
 
-    await tester.tap(find.text('Ingreso directo (-1 cupo)'));
+    await tocar(tester, '-1 cupo');
     await tester.pump();
 
     expect(api.vecesActualizado, 0);
@@ -84,8 +96,7 @@ void main() {
     );
   });
 
-  testWidgets('no permite liberar cupos por encima de la capacidad',
-      (tester) async {
+  testWidgets('el ajuste manual no supera la capacidad', (tester) async {
     final api = ParqueaderoServiceFalso();
     await montar(
       tester,
@@ -93,7 +104,7 @@ void main() {
       parqueadero: parqueaderoDePrueba(cuposDisponibles: 50),
     );
 
-    await tester.tap(find.text('Liberar cupo (+1 cupo)'));
+    await tocar(tester, '+1 cupo');
     await tester.pump();
 
     expect(api.vecesActualizado, 0);
@@ -112,7 +123,7 @@ void main() {
     );
     await montar(tester, api);
 
-    await tester.tap(find.text('Ingreso directo (-1 cupo)'));
+    await tocar(tester, '-1 cupo');
     await tester.pump();
 
     expect(find.text('Parqueadero no encontrado'), findsOneWidget);
@@ -125,7 +136,7 @@ void main() {
     final api = ParqueaderoServiceFalso(respuestaActualizar: respuesta);
     await montar(tester, api);
 
-    await tester.tap(find.text('Ingreso directo (-1 cupo)'));
+    await tocar(tester, '-1 cupo');
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -156,13 +167,15 @@ void main() {
     expect(codigo.cuposDisponibles, 30);
   });
 
-  testWidgets('al validar una reserva vuelve con los cupos actualizados',
+  testWidgets('al validar una reserva con placa vuelve con los cupos actualizados',
       (tester) async {
     final api = ParqueaderoServiceFalso();
+    final estadias = EstadiaServiceFalso();
     await montar(
       tester,
       api,
       comprobantes: ComprobanteServiceFalso(comprobante: comprobanteDePrueba()),
+      estadias: estadias,
     );
 
     await tester.tap(find.text('Código de reserva'));
@@ -170,12 +183,71 @@ void main() {
     await tester.enterText(find.byType(TextField), '15');
     await tester.tap(find.text('Validar comprobante'));
     await tester.pump();
-    await tester.ensureVisible(find.text('Validar reserva'));
-    await tester.tap(find.text('Validar reserva'));
+    await tester.enterText(find.byKey(const Key('placa_0')), 'ABC123');
+    await tocar(tester, 'Validar reserva');
     await tester.pumpAndSettle();
 
     expect(find.byType(CodigoReservaScreen), findsNothing);
-    expect(api.cuposEnviados, 29);
+    expect(estadias.ingresosDirectos.single.placa, 'ABC123');
     expect(find.text('29'), findsOneWidget);
+  });
+
+  testWidgets('ingreso directo registra la placa y descuenta el cupo',
+      (tester) async {
+    final estadias = EstadiaServiceFalso();
+    await montar(tester, ParqueaderoServiceFalso(), estadias: estadias);
+
+    await tocar(tester, 'Ingreso directo');
+    await tester.pumpAndSettle();
+    expect(find.byType(IngresoVehiculoScreen), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('placaIngreso')), 'abc123');
+    await tester.tap(find.text('Registrar ingreso'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(IngresoVehiculoScreen), findsNothing);
+    expect(estadias.ingresosDirectos.single.placa, 'ABC123');
+    expect(find.text('29'), findsOneWidget);
+    expect(find.text('Ingreso registrado: ABC123 a las 18:00.'), findsOneWidget);
+  });
+
+  testWidgets('liberar cupo calcula el cobro, confirma y suma el cupo',
+      (tester) async {
+    final estadias = EstadiaServiceFalso();
+    await montar(tester, ParqueaderoServiceFalso(), estadias: estadias);
+
+    await tocar(tester, 'Liberar cupo');
+    await tester.pumpAndSettle();
+    expect(find.byType(SalidaVehiculoScreen), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('placaSalida')), 'ABC123');
+    await tester.tap(find.text('Calcular cobro'));
+    await tester.pump();
+    expect(find.text('\$2.250'), findsOneWidget);
+    expect(estadias.salidas, isEmpty);
+
+    await tocar(tester, 'Confirmar pago y liberar cupo');
+    await tester.pump();
+    expect(estadias.salidas, ['ABC123']);
+    expect(find.text('Salida registrada. El cupo quedó libre.'), findsOneWidget);
+
+    await tocar(tester, 'Listo');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SalidaVehiculoScreen), findsNothing);
+    expect(find.text('31'), findsOneWidget);
+  });
+
+  testWidgets('si sale de liberar cupo sin confirmar no cambia los cupos',
+      (tester) async {
+    await montar(tester, ParqueaderoServiceFalso());
+
+    await tocar(tester, 'Liberar cupo');
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SalidaVehiculoScreen), findsNothing);
+    expect(find.text('30'), findsOneWidget);
   });
 }

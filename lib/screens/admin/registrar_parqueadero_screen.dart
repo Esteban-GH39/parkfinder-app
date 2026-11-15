@@ -54,6 +54,8 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
   final _capacidadCtrl = TextEditingController();
   final _motosCtrl = TextEditingController();
   final _tarifaMotoCtrl = TextEditingController();
+  final _tarifaDiaMotoCtrl = TextEditingController();
+  final _tarifaNocheMotoCtrl = TextEditingController();
   final _tarifaHoraCtrl = TextEditingController();
   final _tarifaDiaCtrl = TextEditingController();
   final _tarifaNocheCtrl = TextEditingController();
@@ -73,6 +75,8 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
     _capacidadCtrl.dispose();
     _motosCtrl.dispose();
     _tarifaMotoCtrl.dispose();
+    _tarifaDiaMotoCtrl.dispose();
+    _tarifaNocheMotoCtrl.dispose();
     _tarifaHoraCtrl.dispose();
     _tarifaDiaCtrl.dispose();
     _tarifaNocheCtrl.dispose();
@@ -195,6 +199,12 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
       tarifaHoraMoto: _tarifaMotoCtrl.text.trim().isEmpty
           ? null
           : _parsearNumero(_tarifaMotoCtrl.text),
+      tarifaDiaMoto: _tarifaDiaMotoCtrl.text.trim().isEmpty
+          ? null
+          : _parsearNumero(_tarifaDiaMotoCtrl.text),
+      tarifaNocheMoto: _tarifaNocheMotoCtrl.text.trim().isEmpty
+          ? null
+          : _parsearNumero(_tarifaNocheMotoCtrl.text),
       tarifaHora: _parsearNumero(_tarifaHoraCtrl.text),
       tarifaDia: _parsearNumero(_tarifaDiaCtrl.text),
       tarifaNoche: _parsearNumero(_tarifaNocheCtrl.text),
@@ -397,6 +407,22 @@ class _RegistroParqueaderoScreenState extends State<RegistroParqueaderoScreen> {
               ),
               _campoTarifa(_tarifaDiaCtrl, 'Tarifa por día'),
               _campoTarifa(_tarifaNocheCtrl, 'Tarifa por noche'),
+              TextFormField(
+                key: const Key('campoTarifaDiaMoto'),
+                controller: _tarifaDiaMotoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Tarifa por día de moto (opcional)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              TextFormField(
+                key: const Key('campoTarifaNocheMoto'),
+                controller: _tarifaNocheMotoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Tarifa por noche de moto (opcional)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
               TextFormField(
                 controller: _horaInicioCtrl,
                 decoration: const InputDecoration(

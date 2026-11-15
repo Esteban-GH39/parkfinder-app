@@ -86,6 +86,23 @@ class ReservaService {
     }
   }
 
+  /// Consulta una reserva (cuántos carros y motos tiene). Devuelve `{success, data}` o `{success, error}`.
+  Future<Map<String, dynamic>> obtener(int reservaId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('${ApiConfig.baseUrl}/reservas/$reservaId'))
+          .timeout(const Duration(seconds: 10));
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      if (response.statusCode == 200) return {'success': true, 'data': body};
+      return {'success': false, 'error': _mensaje(body)};
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'No se pudo conectar con el servidor. Intenta de nuevo.',
+      };
+    }
+  }
+
   // El backend espera una fecha sin zona horaria: 2026-10-29T10:00:00
   String _formato(DateTime d) => d.toIso8601String().split('.').first;
 
