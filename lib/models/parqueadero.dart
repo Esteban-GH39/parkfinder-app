@@ -16,6 +16,9 @@ class Parqueadero {
   final int cuposMotos;
   /// Tarifa por hora de la moto; null = paga lo mismo que el carro.
   final double? tarifaHoraMoto;
+  /// Tarifa por día y por noche de la moto; null = paga lo mismo que el carro.
+  final double? tarifaDiaMoto;
+  final double? tarifaNocheMoto;
   final double? latitud;
   final double? longitud;
   //VARIABLES NUEVAS BASADA EN EL DTO
@@ -40,6 +43,8 @@ class Parqueadero {
     this.capacidadMotos = 0,
     this.cuposMotos = 0,
     this.tarifaHoraMoto,
+    this.tarifaDiaMoto,
+    this.tarifaNocheMoto,
     this.latitud,
     this.longitud,
     //VARIABLES NUEVAS BASADA EN EL DTO
@@ -68,6 +73,8 @@ class Parqueadero {
       capacidadMotos: (json['capacidadMotos'] as num?)?.toInt() ?? 0,
       cuposMotos: (json['cuposMotos'] as num?)?.toInt() ?? 0,
       tarifaHoraMoto: (json['tarifaHoraMoto'] as num?)?.toDouble(),
+      tarifaDiaMoto: (json['tarifaDiaMoto'] as num?)?.toDouble(),
+      tarifaNocheMoto: (json['tarifaNocheMoto'] as num?)?.toDouble(),
       latitud: (json['latitud'] as num?)?.toDouble(),
       longitud: (json['longitud'] as num?)?.toDouble(),
       horaInicio: json['horaInicio'] as String? ?? '',
@@ -88,6 +95,8 @@ class Parqueadero {
     'tarifaNoche': tarifaNoche,
     'capacidadMotos': capacidadMotos,
     'tarifaHoraMoto': tarifaHoraMoto,
+    'tarifaDiaMoto': tarifaDiaMoto,
+    'tarifaNocheMoto': tarifaNocheMoto,
     'latitud': latitud,
     'longitud': longitud,
     //VARIABLES NUEVAS BASADA EN EL DTO
@@ -108,6 +117,8 @@ class Parqueadero {
     'tarifaNoche': tarifaNoche,
     'capacidadMotos': capacidadMotos,
     'tarifaHoraMoto': tarifaHoraMoto,
+    'tarifaDiaMoto': tarifaDiaMoto,
+    'tarifaNocheMoto': tarifaNocheMoto,
     'horaInicio': _horaONull(horaInicio),
     'horaFinal': _horaONull(horaFinal),
     'nombrePropietario': representante.trim(),

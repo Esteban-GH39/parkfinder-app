@@ -51,6 +51,12 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
   late final _tarifaMotoCtrl = TextEditingController(
     text: widget.parqueadero.tarifaHoraMoto?.toString() ?? '',
   );
+  late final _tarifaDiaMotoCtrl = TextEditingController(
+    text: widget.parqueadero.tarifaDiaMoto?.toString() ?? '',
+  );
+  late final _tarifaNocheMotoCtrl = TextEditingController(
+    text: widget.parqueadero.tarifaNocheMoto?.toString() ?? '',
+  );
   late final _ocupadosCtrl = TextEditingController(
     text: widget.parqueadero.cuposOcupados?.toString() ?? '',
   );
@@ -73,6 +79,8 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
     _capacidadCtrl.dispose();
     _motosCtrl.dispose();
     _tarifaMotoCtrl.dispose();
+    _tarifaDiaMotoCtrl.dispose();
+    _tarifaNocheMotoCtrl.dispose();
     _ocupadosCtrl.dispose();
     _tarifaHoraCtrl.dispose();
     _tarifaDiaCtrl.dispose();
@@ -102,6 +110,8 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
       'capacidadTotal': _capacidadTotalForm,
       'capacidadMotos': int.tryParse(_motosCtrl.text) ?? 0,
       'tarifaHoraMoto': double.tryParse(_tarifaMotoCtrl.text),
+      'tarifaDiaMoto': double.tryParse(_tarifaDiaMotoCtrl.text),
+      'tarifaNocheMoto': double.tryParse(_tarifaNocheMotoCtrl.text),
       'cuposOcupados': int.tryParse(_ocupadosCtrl.text),
       'tarifaHora': double.tryParse(_tarifaHoraCtrl.text),
       'tarifaDia': double.tryParse(_tarifaDiaCtrl.text),
@@ -249,6 +259,24 @@ class _EditarParqueaderoScreenState extends State<EditarParqueaderoScreen> {
               TextFormField(
                 controller: _tarifaDiaCtrl,
                 decoration: const InputDecoration(labelText: 'Tarifa por día'),
+                keyboardType: TextInputType.number,
+                validator: _validarDecimalNoNegativo,
+              ),
+              TextFormField(
+                key: const Key('campoTarifaDiaMoto'),
+                controller: _tarifaDiaMotoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Tarifa por día de moto (opcional)',
+                ),
+                keyboardType: TextInputType.number,
+                validator: _validarDecimalNoNegativo,
+              ),
+              TextFormField(
+                key: const Key('campoTarifaNocheMoto'),
+                controller: _tarifaNocheMotoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Tarifa por noche de moto (opcional)',
+                ),
                 keyboardType: TextInputType.number,
                 validator: _validarDecimalNoNegativo,
               ),

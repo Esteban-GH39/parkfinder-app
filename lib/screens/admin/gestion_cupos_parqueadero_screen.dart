@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../models/estadia.dart';
 import '../../models/parqueadero.dart';
 import '../../services/comprobante_service.dart';
+import '../../services/estadia_service.dart';
 import '../../services/parqueadero_service.dart';
+import '../../services/reserva_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
 import 'codigo_reserva_screen.dart';
+import 'ingreso_vehiculo_screen.dart';
+import 'salida_vehiculo_screen.dart';
 
 class GestionCuposParqueaderoScreen extends StatefulWidget {
   final Parqueadero parqueadero;
@@ -13,12 +18,16 @@ class GestionCuposParqueaderoScreen extends StatefulWidget {
   /// Permite inyectar servicios falsos en las pruebas.
   final ParqueaderoService? parqueaderoService;
   final ComprobanteService? comprobanteService;
+  final EstadiaService? estadiaService;
+  final ReservaService? reservaService;
 
   const GestionCuposParqueaderoScreen({
     super.key,
     required this.parqueadero,
     this.parqueaderoService,
     this.comprobanteService,
+    this.estadiaService,
+    this.reservaService,
   });
 
   @override
@@ -134,6 +143,8 @@ class _DetalleParqueaderoScreenState
           cuposDisponibles: _cuposDisponibles,
           parqueaderoService: widget.parqueaderoService,
           comprobanteService: widget.comprobanteService,
+          estadiaService: widget.estadiaService,
+          reservaService: widget.reservaService,
         ),
       ),
     );
@@ -142,6 +153,65 @@ class _DetalleParqueaderoScreenState
       setState(() => _cuposDisponibles = nuevosCupos);
     }
   }
+
+  // ABRE EL INGRESO DIRECTO POR PLACA. El backend ya descontó el cupo; aquí solo se refleja.
+  Future<void> _abrirIngreso() async {
+    final estadia = await Navigator.push<Estadia>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => IngresoVehiculoScreen(
+          parqueadero: widget.parqueadero,
+          tipoInicial: _verMotos ? TipoVehiculo.moto : TipoVehiculo.carro,
+          estadiaService: widget.estadiaService,
+        ),
+      ),
+    );
+    if (estadia == null || !mounted) return;
+
+    setState(() {
+      _cuposDisponibles = (_cuposDisponibles - 1).clamp(0, _capacidadTotal);
+      if (estadia.tipoVehiculo == TipoVehiculo.moto) {
+        _cuposMotos = (_cuposMotos - 1).clamp(0, _capacidadMotos);
+      }
+    });
+    _mostrarSnackBar(
+      'Ingreso registrado: ${estadia.placa} a las ${_hora(estadia.ingresoEn)}.',
+    );
+  }
+
+  // ABRE LA SALIDA POR PLACA CON EL COBRO. El backend ya liberó el cupo; aquí solo se refleja.
+  Future<void> _abrirSalida() async {
+    final liquidacion = await Navigator.push<Object?>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SalidaVehiculoScreen(
+          parqueadero: widget.parqueadero,
+          estadiaService: widget.estadiaService,
+        ),
+      ),
+    );
+    if (liquidacion is! Liquidacion || !liquidacion.cerrada || !mounted) return;
+
+    // Igual que el backend: un cupo más del tipo, sin pasar de su capacidad
+    setState(() {
+      var motos = _cuposMotos;
+      var carros = (_cuposDisponibles - _cuposMotos).clamp(0, _capacidadTotal);
+      if (liquidacion.tipoVehiculo == TipoVehiculo.moto) {
+        motos = (motos + 1).clamp(0, _capacidadMotos);
+      } else {
+        carros = (carros + 1).clamp(0, _capacidadTotal - _capacidadMotos);
+      }
+      _cuposMotos = motos;
+      _cuposDisponibles = carros + motos;
+    });
+    _mostrarSnackBar(
+      'Cupo liberado: ${liquidacion.placa} pagó ${formatearPesos(liquidacion.valorTotal)}.',
+    );
+  }
+
+  String _hora(DateTime? fecha) => fecha == null
+      ? '-'
+      : '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
 
   void _mostrarSnackBar(String mensaje, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -283,18 +353,46 @@ class _DetalleParqueaderoScreenState
               child: const Text('Código de reserva'),
             ),
             const SizedBox(height: 12),
-            // Descuenta un cupo disponible
+            // Registra la placa y la hora de ingreso, y descuenta un cupo
             ElevatedButton(
               style: secundario,
-              onPressed: _isLoading ? null : () => _modificarCupos(-1),
-              child: Text(_tieneMotos ? 'Ingreso directo (-1 ${_verMotos ? 'moto' : 'carro'})' : 'Ingreso directo (-1 cupo)'),
+              onPressed: _isLoading ? null : _abrirIngreso,
+              child: const Text('Ingreso directo'),
             ),
             const SizedBox(height: 12),
-            // Agrega un cupo disponible
+            // Calcula el cobro por placa y libera el cupo
             ElevatedButton(
               style: secundario,
-              onPressed: _isLoading ? null : () => _modificarCupos(1),
-              child: Text(_tieneMotos ? 'Liberar cupo (+1 ${_verMotos ? 'moto' : 'carro'})' : 'Liberar cupo (+1 cupo)'),
+              onPressed: _isLoading ? null : _abrirSalida,
+              child: const Text('Liberar cupo'),
+            ),
+            const SizedBox(height: 20),
+            // Corrección manual de los cupos, sin registrar placa
+            Text(
+              'Ajuste manual de cupos',
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textoSuave,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isLoading ? null : () => _modificarCupos(-1),
+                    child: Text(_tieneMotos ? '-1 ${_verMotos ? 'moto' : 'carro'}' : '-1 cupo'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isLoading ? null : () => _modificarCupos(1),
+                    child: Text(_tieneMotos ? '+1 ${_verMotos ? 'moto' : 'carro'}' : '+1 cupo'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
