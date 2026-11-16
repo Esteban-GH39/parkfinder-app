@@ -10,6 +10,7 @@ import '../../theme/widgets_comunes.dart';
 import '../cliente/login_screen.dart';
 import 'editar_parqueadero_screen.dart';
 import 'gestion_cupos_parqueadero_screen.dart';
+import 'historial_ingresos_screen.dart';
 import 'registrar_parqueadero_screen.dart';
 
 /// Vista del dueño: sus parqueaderos con los cupos que quedan y las reservas que reciben.
@@ -95,6 +96,19 @@ class _AdminScreenState extends State<AdminScreen> {
       MaterialPageRoute(builder: (_) => const RegistroParqueaderoScreen()),
     );
     if (mounted) _consultar();
+  }
+
+  /// HU-24: historial de reservas e ingresos por día, semana o mes.
+  Future<void> _verHistorial() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => HistorialIngresosScreen(
+          parqueaderos: [
+            for (final p in _parqueaderos) p as Map<String, dynamic>,
+          ],
+        ),
+      ),
+    );
   }
 
   /// HU-19: editar los datos de un parqueadero (con historial de cambios).
@@ -190,6 +204,13 @@ class _AdminScreenState extends State<AdminScreen> {
               onPressed: _registrar,
               icon: const Icon(Icons.add),
               label: const Text('Registrar parqueadero'),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              key: const Key('botonHistorialIngresos'),
+              onPressed: _verHistorial,
+              icon: const Icon(Icons.bar_chart),
+              label: const Text('Historial e ingresos'),
             ),
             const SizedBox(height: 20),
             if (_error != null) ...[
