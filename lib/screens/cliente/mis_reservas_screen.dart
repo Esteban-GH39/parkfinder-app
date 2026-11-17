@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../../services/calificacion_service.dart';
 import '../../services/reserva_service.dart';
 import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
+import 'calificar_screen.dart';
 import 'pago_screen.dart';
 
 /// Historial de reservas del cliente, separado de la búsqueda de parqueaderos.
 /// Muestra todas sus reservas (por pagar, confirmadas, usadas y vencidas) con filtros por estado.
 class MisReservasScreen extends StatefulWidget {
-  const MisReservasScreen({super.key, ReservaService? reservaService})
-    : _reservaService = reservaService;
+  const MisReservasScreen({
+    super.key,
+    ReservaService? reservaService,
+    CalificacionService? calificacionService,
+  }) : _reservaService = reservaService,
+       _calificacionService = calificacionService;
 
   final ReservaService? _reservaService;
+  final CalificacionService? _calificacionService;
 
   @override
   State<MisReservasScreen> createState() => _MisReservasScreenState();
@@ -34,7 +41,13 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
   late final ReservaService _reservaService =
       widget._reservaService ?? ReservaService();
 
+  late final CalificacionService _calificacionService =
+      widget._calificacionService ?? CalificacionService();
+
   List<Map<String, dynamic>> _reservas = [];
+
+  /// HU-13: por parqueadero, `{puede, yaCalifico}` (solo de los parqueaderos con reservas usadas).
+  final Map<int, Map<String, dynamic>> _permisos = {};
   _Filtro _filtro = _Filtro.todas;
   bool _cargando = true;
 
@@ -57,6 +70,32 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
       _reservas = reservas;
       _cargando = false;
     });
+    _cargarPermisos(clienteId);
+  }
+
+  /// Consulta si el cliente puede calificar cada parqueadero donde ya usó una reserva.
+  Future<void> _cargarPermisos(int clienteId) async {
+    final ids = _reservas
+        .where((r) => _estado(r) == _Estado.usada)
+        .map((r) => (r['parqueaderoId'] as num).toInt())
+        .toSet();
+    for (final id in ids) {
+      final permiso = await _calificacionService.permiso(clienteId, id);
+      if (!mounted) return;
+      setState(() => _permisos[id] = permiso);
+    }
+  }
+
+  Future<void> _calificar(Map<String, dynamic> reserva) async {
+    final calificado = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CalificarScreen(
+          parqueaderoId: (reserva['parqueaderoId'] as num).toInt(),
+          nombre: '${reserva['parqueaderoNombre'] ?? 'Parqueadero'}',
+        ),
+      ),
+    );
+    if (calificado == true && mounted) _cargar();
   }
 
   _Estado _estado(Map<String, dynamic> r) {
@@ -173,12 +212,21 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
                         itemBuilder: (_, i) {
                           final r = lista[i];
                           final e = _estado(r);
+                          final permiso =
+                              _permisos[(r['parqueaderoId'] as num?)?.toInt()];
                           return _TarjetaReserva(
                             reserva: r,
                             estado: e,
                             onPagar: e == _Estado.porPagar
                                 ? () => _pagar(r)
                                 : null,
+                            onCalificar:
+                                e == _Estado.usada && permiso?['puede'] == true
+                                ? () => _calificar(r)
+                                : null,
+                            yaCalificado:
+                                e == _Estado.usada &&
+                                permiso?['yaCalifico'] == true,
                           );
                         },
                       ),
@@ -196,10 +244,14 @@ class _TarjetaReserva extends StatelessWidget {
     required this.reserva,
     required this.estado,
     this.onPagar,
+    this.onCalificar,
+    this.yaCalificado = false,
   });
   final Map<String, dynamic> reserva;
   final _Estado estado;
   final VoidCallback? onPagar;
+  final VoidCallback? onCalificar;
+  final bool yaCalificado;
 
   (String, Color, Color, IconData) get _aspecto {
     switch (estado) {
@@ -356,6 +408,31 @@ class _TarjetaReserva extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ],
+          if (onCalificar != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: Key('botonCalificar_${reserva['id']}'),
+                onPressed: onCalificar,
+                icon: const Icon(Icons.star_outline),
+                label: const Text('Calificar'),
+              ),
+            ),
+          ],
+          if (yaCalificado) ...[
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                Icon(Icons.star, size: 16, color: AppColors.exito),
+                SizedBox(width: 6),
+                Text(
+                  'Ya calificaste este parqueadero',
+                  style: TextStyle(fontSize: 12, color: AppColors.textoSuave),
+                ),
+              ],
             ),
           ],
           if (onPagar != null) ...[

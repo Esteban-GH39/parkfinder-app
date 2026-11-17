@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/parqueadero.dart';
+import '../../services/calificacion_service.dart';
 import '../../services/parqueadero_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
@@ -13,11 +14,14 @@ class DetalleParqueaderoScreen extends StatefulWidget {
     required this.id,
     this.nombre,
     ParqueaderoService? servicio,
-  }) : _servicio = servicio;
+    CalificacionService? calificacionService,
+  }) : _servicio = servicio,
+       _calificacionService = calificacionService;
 
   final int id;
   final String? nombre;
   final ParqueaderoService? _servicio;
+  final CalificacionService? _calificacionService;
 
   @override
   State<DetalleParqueaderoScreen> createState() =>
@@ -27,6 +31,12 @@ class DetalleParqueaderoScreen extends StatefulWidget {
 class _DetalleParqueaderoScreenState extends State<DetalleParqueaderoScreen> {
   late final ParqueaderoService _servicio =
       widget._servicio ?? ParqueaderoService();
+
+  late final CalificacionService _calificaciones =
+      widget._calificacionService ?? CalificacionService();
+
+  /// HU-13: `{promedio, total, calificaciones}`; null si aún no cargó o falló.
+  Map<String, dynamic>? _resumen;
 
   Parqueadero? _p;
   String _horaFin = '';
@@ -62,6 +72,7 @@ class _DetalleParqueaderoScreenState extends State<DetalleParqueaderoScreen> {
         _horaFin = '${json['horaFin'] ?? json['horaFinal'] ?? ''}';
         _cargando = false;
       });
+      _cargarResumen();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -69,6 +80,113 @@ class _DetalleParqueaderoScreenState extends State<DetalleParqueaderoScreen> {
         _cargando = false;
       });
     }
+  }
+
+  /// Si falla la consulta de calificaciones el detalle sigue funcionando sin ellas.
+  Future<void> _cargarResumen() async {
+    try {
+      final resumen = await _calificaciones.resumen(widget.id);
+      if (!mounted) return;
+      setState(() => _resumen = resumen);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _resumen = null);
+    }
+  }
+
+  String _fechaCorta(dynamic iso) {
+    final d = DateTime.tryParse('${iso ?? ''}');
+    if (d == null) return '';
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  String _estrellas(int n) => '★' * n + '☆' * (5 - n);
+
+  List<Widget> _seccionCalificaciones() {
+    final r = _resumen;
+    final lista = ((r?['calificaciones'] as List?) ?? const [])
+        .cast<Map<String, dynamic>>();
+    final total = ((r?['total'] as num?) ?? 0).toInt();
+    final promedio = (r?['promedio'] as num?)?.toDouble();
+    return [
+      TarjetaBlanca(
+        key: const Key('seccionCalificaciones'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.star_border, size: 20, color: AppColors.textoSuave),
+                SizedBox(width: 8),
+                Text(
+                  'Calificación y comentarios',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (total == 0 || promedio == null)
+              const Text(
+                'Este parqueadero aún no tiene calificaciones',
+                style: TextStyle(fontSize: 14),
+              )
+            else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    promedio.toStringAsFixed(1),
+                    key: const Key('promedioCalificacion'),
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      '$total ${total == 1 ? 'opinión' : 'opiniones'}',
+                      style: const TextStyle(color: AppColors.textoSuave),
+                    ),
+                  ),
+                ],
+              ),
+              for (final c in lista) ...[
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${c['clienteNombre'] ?? 'Cliente'}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Text(
+                      _fechaCorta(c['creadaEn']),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textoSuave,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _estrellas(((c['estrellas'] as num?) ?? 0).toInt()),
+                  style: const TextStyle(color: AppColors.acento),
+                ),
+                if ((c['comentario'] ?? '').toString().trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text('${c['comentario']}'),
+                  ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    ];
   }
 
   String _hora(String? v) {
@@ -210,12 +328,8 @@ class _DetalleParqueaderoScreenState extends State<DetalleParqueaderoScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        // HU-13 (calificaciones y comentarios) aún no existe: aviso fijo.
-        const _Seccion(
-          icono: Icons.star_border,
-          titulo: 'Calificación y comentarios',
-          lineas: ['Este parqueadero aún no tiene calificaciones'],
-        ),
+        // HU-13: promedio y comentarios de quienes ya usaron el parqueadero.
+        ..._seccionCalificaciones(),
       ],
     );
   }

@@ -4,6 +4,7 @@ import '../../services/api_service.dart';
 import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
+import 'detalle_parqueadero_screen.dart';
 import 'login_screen.dart';
 import 'mis_reservas_screen.dart';
 import 'reservar_screen.dart';
@@ -77,6 +78,20 @@ class _BuscarScreenState extends State<BuscarScreen> {
     // Tocar la zona ya elegida quita el filtro.
     _zonaCtrl.text = _zonaCtrl.text.trim() == zona ? '' : zona;
     _buscar();
+  }
+
+  /// HU-05: abre el detalle completo (tarifas, horario, calificaciones) del parqueadero.
+  void _verDetalle(Map<String, dynamic> parqueadero) {
+    final id = (parqueadero['id'] as num?)?.toInt();
+    if (id == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DetalleParqueaderoScreen(
+          id: id,
+          nombre: '${parqueadero['nombre'] ?? ''}',
+        ),
+      ),
+    );
   }
 
   /// HU-06: abre la reserva del parqueadero elegido.
@@ -247,6 +262,7 @@ class _BuscarScreenState extends State<BuscarScreen> {
           _TarjetaResultado(
             p: p as Map<String, dynamic>,
             onTap: () => _reservar(p),
+            onDetalle: () => _verDetalle(p),
           ),
           const SizedBox(height: 12),
         ],
@@ -339,9 +355,14 @@ class _ChipZona extends StatelessWidget {
 }
 
 class _TarjetaResultado extends StatelessWidget {
-  const _TarjetaResultado({required this.p, required this.onTap});
+  const _TarjetaResultado({
+    required this.p,
+    required this.onTap,
+    required this.onDetalle,
+  });
   final Map<String, dynamic> p;
   final VoidCallback onTap;
+  final VoidCallback onDetalle;
 
   @override
   Widget build(BuildContext context) {
@@ -429,6 +450,23 @@ class _TarjetaResultado extends StatelessWidget {
                             cupos: (p['cuposDisponibles'] as num?)?.toInt(),
                           ),
                       ],
+                    ),
+                    const SizedBox(height: 4),
+                    GestureDetector(
+                      key: Key('verDetalle_${p['id']}'),
+                      onTap: onDetalle,
+                      behavior: HitTestBehavior.opaque,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          'Ver detalle y calificaciones',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.acento,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
