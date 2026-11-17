@@ -8,6 +8,7 @@ import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
 import '../cliente/login_screen.dart';
+import 'calificaciones_parqueadero_screen.dart';
 import 'editar_parqueadero_screen.dart';
 import 'gestion_cupos_parqueadero_screen.dart';
 import 'historial_ingresos_screen.dart';
@@ -122,6 +123,20 @@ class _AdminScreenState extends State<AdminScreen> {
     if (mounted) _consultar();
   }
 
+  /// HU-13: opiniones y promedio que los clientes dejaron en el parqueadero.
+  void _verOpiniones(Map<String, dynamic> p) {
+    final id = (p['id'] as num?)?.toInt();
+    if (id == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CalificacionesParqueaderoScreen(
+          parqueaderoId: id,
+          nombre: '${p['nombre'] ?? ''}',
+        ),
+      ),
+    );
+  }
+
   /// Gestión de cupos (HU-21): ingreso directo, liberar cupo y código de reserva.
   Future<void> _gestionarCupos(Map<String, dynamic> p) async {
     await Navigator.of(context).push(
@@ -233,6 +248,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   p: p as Map<String, dynamic>,
                   onTap: () => _gestionarCupos(p),
                   onEditar: () => _editar(p),
+                  onOpiniones: () => _verOpiniones(p),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -285,10 +301,17 @@ class _TarjetaParqueadero extends StatelessWidget {
     required this.p,
     required this.onTap,
     required this.onEditar,
+    required this.onOpiniones,
   });
   final Map<String, dynamic> p;
   final VoidCallback onTap;
   final VoidCallback onEditar;
+  final VoidCallback onOpiniones;
+
+  static final _estiloCompacto = TextButton.styleFrom(
+    visualDensity: VisualDensity.compact,
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+  );
 
   @override
   Widget build(BuildContext context) => Material(
@@ -396,16 +419,27 @@ class _TarjetaParqueadero extends StatelessWidget {
               TextButton.icon(
                 key: Key('editarParqueadero_${p['id']}'),
                 onPressed: onEditar,
+                style: _estiloCompacto,
                 icon: const Icon(Icons.edit_outlined, size: 16),
                 label: const Text('Editar'),
               ),
+              TextButton.icon(
+                key: Key('verOpiniones_${p['id']}'),
+                onPressed: onOpiniones,
+                style: _estiloCompacto,
+                icon: const Icon(Icons.star_border, size: 16),
+                label: const Text('Opiniones'),
+              ),
               const Spacer(),
-              const Text(
-                'Gestionar cupos',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.acento,
+              const Flexible(
+                child: Text(
+                  'Gestionar cupos',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.acento,
+                  ),
                 ),
               ),
               const Icon(Icons.chevron_right, size: 18, color: AppColors.acento),

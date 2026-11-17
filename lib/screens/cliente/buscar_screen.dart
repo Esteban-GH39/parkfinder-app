@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
-import '../../services/reserva_service.dart';
 import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
+import 'detalle_parqueadero_screen.dart';
 import 'login_screen.dart';
-import 'pago_screen.dart';
+import 'mis_reservas_screen.dart';
 import 'reservar_screen.dart';
 
 /// HU-03: búsqueda de parqueaderos por zona (escrita o elegida de las existentes).
 class BuscarScreen extends StatefulWidget {
-  const BuscarScreen({
-    super.key,
-    ApiService? apiService,
-    ReservaService? reservaService,
-  }) : _apiService = apiService,
-       _reservaService = reservaService;
+  const BuscarScreen({super.key, ApiService? apiService})
+    : _apiService = apiService;
 
   final ApiService? _apiService;
-  final ReservaService? _reservaService;
 
   @override
   State<BuscarScreen> createState() => _BuscarScreenState();
@@ -28,13 +23,9 @@ class BuscarScreen extends StatefulWidget {
 class _BuscarScreenState extends State<BuscarScreen> {
   final _zonaCtrl = TextEditingController();
   late final ApiService _apiService = widget._apiService ?? ApiService();
-  late final ReservaService _reservaService =
-      widget._reservaService ?? ReservaService();
 
   List<String> _zonas = [];
   List<dynamic> _resultados = [];
-  List<Map<String, dynamic>> _pendientes = [];
-  List<Map<String, dynamic>> _confirmadas = [];
   bool _cargando = false;
   bool _buscado = false;
   String? _error;
@@ -44,42 +35,6 @@ class _BuscarScreenState extends State<BuscarScreen> {
     super.initState();
     _cargarZonas();
     _buscar(); // muestra todos al abrir
-    _cargarPendientes();
-  }
-
-  /// HU-07: reservas retenidas sin pagar, para poder retomarlas.
-  Future<void> _cargarPendientes() async {
-    final clienteId = SesionService.instancia.id;
-    if (clienteId == null) return;
-    final pendientes = await _reservaService.pendientes(clienteId);
-    final confirmadas = await _reservaService.confirmadas(clienteId);
-    if (!mounted) return;
-    setState(() {
-      _pendientes = pendientes;
-      _confirmadas = confirmadas;
-    });
-  }
-
-  /// Al volver de reservar o pagar, los cupos y las pendientes ya cambiaron.
-  void _refrescar() {
-    _buscar();
-    _cargarPendientes();
-  }
-
-  Future<void> _pagarPendiente(Map<String, dynamic> reserva) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PagoScreen(
-          reserva: reserva,
-          parqueadero: {
-            'nombre': reserva['parqueaderoNombre'],
-            'tarifaHora': reserva['tarifaHora'],
-            'tarifaHoraMoto': reserva['tarifaHoraMoto'],
-          },
-        ),
-      ),
-    );
-    if (mounted) _refrescar();
   }
 
   @override
@@ -125,6 +80,20 @@ class _BuscarScreenState extends State<BuscarScreen> {
     _buscar();
   }
 
+  /// HU-05: abre el detalle completo (tarifas, horario, calificaciones) del parqueadero.
+  void _verDetalle(Map<String, dynamic> parqueadero) {
+    final id = (parqueadero['id'] as num?)?.toInt();
+    if (id == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DetalleParqueaderoScreen(
+          id: id,
+          nombre: '${parqueadero['nombre'] ?? ''}',
+        ),
+      ),
+    );
+  }
+
   /// HU-06: abre la reserva del parqueadero elegido.
   void _reservar(Map<String, dynamic> parqueadero) {
     final clienteId = SesionService.instancia.id;
@@ -146,8 +115,15 @@ class _BuscarScreenState extends State<BuscarScreen> {
           ),
         )
         .then((_) {
-          if (mounted) _refrescar();
+          if (mounted) _buscar();
         });
+  }
+
+  /// Las reservas del cliente viven en su propia pantalla, aparte de la búsqueda.
+  void _verMisReservas() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const MisReservasScreen()),
+    );
   }
 
   void _salir() {
@@ -214,6 +190,21 @@ class _BuscarScreenState extends State<BuscarScreen> {
                     color: Colors.white,
                     shape: const CircleBorder(),
                     child: InkWell(
+                      key: const Key('botonMisReservas'),
+                      customBorder: const CircleBorder(),
+                      onTap: _verMisReservas,
+                      child: const SizedBox(
+                        width: 46,
+                        height: 46,
+                        child: Icon(Icons.receipt_long_outlined, size: 20),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.white,
+                    shape: const CircleBorder(),
+                    child: InkWell(
                       key: const Key('botonSalir'),
                       customBorder: const CircleBorder(),
                       onTap: _salir,
@@ -267,150 +258,17 @@ class _BuscarScreenState extends State<BuscarScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
       children: [
-        for (final reserva in _pendientes) ...[
-          _TarjetaPendiente(
-            reserva: reserva,
-            onPagar: () => _pagarPendiente(reserva),
-          ),
-          const SizedBox(height: 12),
-        ],
-        for (final reserva in _confirmadas) ...[
-          _TarjetaConfirmada(reserva: reserva),
-          const SizedBox(height: 12),
-        ],
         for (final p in _resultados) ...[
           _TarjetaResultado(
             p: p as Map<String, dynamic>,
             onTap: () => _reservar(p),
+            onDetalle: () => _verDetalle(p),
           ),
           const SizedBox(height: 12),
         ],
       ],
     );
   }
-}
-
-/// Una reserva ya pagada: muestra el código que el cliente le da al dueño al llegar.
-class _TarjetaConfirmada extends StatelessWidget {
-  const _TarjetaConfirmada({required this.reserva});
-  final Map<String, dynamic> reserva;
-
-  String get _cupos {
-    final motos = ((reserva['cantidadMotos'] as num?) ?? 0).toInt();
-    final total = ((reserva['cantidad'] as num?) ?? 1).toInt();
-    final carros = total - motos;
-    return [
-      if (carros > 0) '$carros ${carros == 1 ? 'carro' : 'carros'}',
-      if (motos > 0) '$motos ${motos == 1 ? 'moto' : 'motos'}',
-    ].join(' · ');
-  }
-
-  @override
-  Widget build(BuildContext context) => Container(
-    key: Key('reservaConfirmada_${reserva['id']}'),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: AppColors.exitoSuave,
-      borderRadius: BorderRadius.circular(24),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.check_circle_outline, color: AppColors.exito),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Reserva confirmada',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${reserva['parqueaderoNombre'] ?? ''} · $_cupos',
-                style: const TextStyle(
-                  color: AppColors.textoSuave,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            const Text(
-              'Código',
-              style: TextStyle(color: AppColors.textoSuave, fontSize: 11),
-            ),
-            Text(
-              '${reserva['codigoReserva'] ?? '-'}',
-              key: const Key('codigoReservaConfirmada'),
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-/// HU-07: una reserva retenida que falta pagar, con acceso directo al pago.
-class _TarjetaPendiente extends StatelessWidget {
-  const _TarjetaPendiente({required this.reserva, required this.onPagar});
-  final Map<String, dynamic> reserva;
-  final VoidCallback onPagar;
-
-  String _hora(String? iso) {
-    if (iso == null) return '';
-    final d = DateTime.tryParse(iso);
-    if (d == null) return '';
-    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
-    final m = d.minute.toString().padLeft(2, '0');
-    return '$h:$m ${d.hour < 12 ? 'am' : 'pm'}';
-  }
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: AppColors.acentoSuave,
-      borderRadius: BorderRadius.circular(24),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.timer_outlined, color: AppColors.acento),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Reserva pendiente de pago',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${reserva['parqueaderoNombre'] ?? ''} · vence '
-                '${_hora(reserva['expiraEn'] as String?)}',
-                style: const TextStyle(
-                  color: AppColors.textoSuave,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        FilledButton(
-          key: const Key('botonPagarPendiente'),
-          onPressed: onPagar,
-          child: const Text('Pagar'),
-        ),
-      ],
-    ),
-  );
 }
 
 class _CampoBusqueda extends StatelessWidget {
@@ -497,9 +355,14 @@ class _ChipZona extends StatelessWidget {
 }
 
 class _TarjetaResultado extends StatelessWidget {
-  const _TarjetaResultado({required this.p, required this.onTap});
+  const _TarjetaResultado({
+    required this.p,
+    required this.onTap,
+    required this.onDetalle,
+  });
   final Map<String, dynamic> p;
   final VoidCallback onTap;
+  final VoidCallback onDetalle;
 
   @override
   Widget build(BuildContext context) {
@@ -587,6 +450,23 @@ class _TarjetaResultado extends StatelessWidget {
                             cupos: (p['cuposDisponibles'] as num?)?.toInt(),
                           ),
                       ],
+                    ),
+                    const SizedBox(height: 4),
+                    GestureDetector(
+                      key: Key('verDetalle_${p['id']}'),
+                      onTap: onDetalle,
+                      behavior: HitTestBehavior.opaque,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          'Ver detalle y calificaciones',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.acento,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

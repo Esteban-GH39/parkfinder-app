@@ -55,6 +55,10 @@ class ReservaService {
   Future<List<Map<String, dynamic>>> confirmadas(int clienteId) =>
       _lista('/reservas/cliente/$clienteId/confirmadas');
 
+  /// Historial completo del cliente (pendientes, confirmadas, usadas y vencidas), lo más reciente primero.
+  Future<List<Map<String, dynamic>>> historial(int clienteId) =>
+      _lista('/reservas/cliente/$clienteId');
+
   Future<List<Map<String, dynamic>>> _lista(String ruta) async {
     try {
       final response = await http
