@@ -90,6 +90,28 @@ class ReservaService {
     }
   }
 
+  /// HU-10: el cliente cancela una reserva confirmada y el cupo se libera.
+  /// Devuelve `{success, data}` o `{success, error}` (409 si ya se usó o pasó el tiempo límite).
+  Future<Map<String, dynamic>> cancelar(int reservaId, int clienteId) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/reservas/$reservaId/cancelar?clienteId=$clienteId',
+            ),
+          )
+          .timeout(const Duration(seconds: 10));
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      if (response.statusCode == 200) return {'success': true, 'data': body};
+      return {'success': false, 'error': _mensaje(body)};
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'No se pudo conectar con el servidor. Intenta de nuevo.',
+      };
+    }
+  }
+
   /// Consulta una reserva (cuántos carros y motos tiene). Devuelve `{success, data}` o `{success, error}`.
   Future<Map<String, dynamic>> obtener(int reservaId) async {
     try {

@@ -162,11 +162,15 @@ class _ReservarScreenState extends State<ReservarScreen> {
         builder: (_) => PagoScreen(reserva: _reserva!, parqueadero: _p),
       ),
     );
-    // Aprobado: la reserva ya no necesita la cuenta regresiva (la confirmación es HU-08)
-    if (pago != null && mounted) {
-      _reloj?.cancel();
-      Navigator.of(context).pop(pago);
+    if (pago == null || !mounted) return;
+    // Intentos agotados (HU-08): el cupo se liberó, hay que reservar de nuevo
+    if (pago['reservaCancelada'] == true) {
+      _reservarDeNuevo();
+      return;
     }
+    // Aprobado: la reserva ya no necesita la cuenta regresiva
+    _reloj?.cancel();
+    Navigator.of(context).pop(pago);
   }
 
   void _reservarDeNuevo() {
