@@ -8,8 +8,18 @@ class _ReservaServiceFalso extends ReservaService {
   _ReservaServiceFalso(this.datos);
   final List<Map<String, dynamic>> datos;
 
+  /// Lo que responde cancelar; guarda a qué reserva se lo pidieron.
+  Map<String, dynamic> respuestaCancelar = {'success': true};
+  int? canceladaId;
+
   @override
   Future<List<Map<String, dynamic>>> historial(int clienteId) async => datos;
+
+  @override
+  Future<Map<String, dynamic>> cancelar(int reservaId, int clienteId) async {
+    canceladaId = reservaId;
+    return respuestaCancelar;
+  }
 }
 
 void main() {
@@ -36,6 +46,7 @@ void main() {
       'id': 3,
       'estado': 'CONFIRMADA',
       'validadaEn': futuro,
+      'parqueaderoId': 3,
       'parqueaderoNombre': 'Sur',
       'cantidad': 1,
       'cantidadMotos': 0,
@@ -43,7 +54,8 @@ void main() {
     },
   ];
 
-  Future<void> montar(WidgetTester tester, List<Map<String, dynamic>> datos) async {
+  Future<_ReservaServiceFalso> montar(WidgetTester tester, List<Map<String, dynamic>> datos) async {
+    final servicio = _ReservaServiceFalso(datos);
     SesionService.instancia.iniciar(
       id: 5,
       nombre: 'Ana',
@@ -51,9 +63,10 @@ void main() {
       rol: 'CLIENTE',
     );
     await tester.pumpWidget(
-      MaterialApp(home: MisReservasScreen(reservaService: _ReservaServiceFalso(datos))),
+      MaterialApp(home: MisReservasScreen(reservaService: servicio)),
     );
     await tester.pumpAndSettle();
+    return servicio;
   }
 
   testWidgets('muestra todas las reservas y el código de la confirmada', (tester) async {
@@ -76,5 +89,51 @@ void main() {
   testWidgets('sin reservas muestra el mensaje vacío', (tester) async {
     await montar(tester, []);
     expect(find.text('Aún no has hecho reservas'), findsOneWidget);
+  });
+
+  testWidgets('HU-10: cancelar una confirmada pide confirmación y avisa', (tester) async {
+    final servicio = await montar(tester, reservas);
+
+    await tester.tap(find.byKey(const Key('botonCancelar_1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('noCancelar')));
+    await tester.pumpAndSettle();
+    expect(servicio.canceladaId, isNull);
+
+    await tester.tap(find.byKey(const Key('botonCancelar_1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('siCancelar')));
+    await tester.pumpAndSettle();
+    expect(servicio.canceladaId, 1);
+    expect(find.text('Reserva cancelada'), findsOneWidget);
+  });
+
+  testWidgets('HU-10: si pasó el límite muestra el motivo del servidor', (tester) async {
+    final servicio = await montar(tester, reservas);
+    servicio.respuestaCancelar = {
+      'success': false,
+      'error': 'Ya pasó el tiempo límite para cancelar',
+    };
+
+    await tester.tap(find.byKey(const Key('botonCancelar_1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('siCancelar')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ya pasó el tiempo límite para cancelar'), findsOneWidget);
+  });
+
+  testWidgets('HU-10: una reserva CANCELADA aparece como Cancelada, sin botón', (tester) async {
+    await montar(tester, [
+      {
+        'id': 9,
+        'estado': 'CANCELADA',
+        'parqueaderoNombre': 'Centro',
+        'cantidad': 1,
+        'cantidadMotos': 0,
+        'fechaHoraLlegada': futuro,
+      },
+    ]);
+    expect(find.text('Cancelada'), findsWidgets);
+    expect(find.byKey(const Key('botonCancelar_9')), findsNothing);
   });
 }

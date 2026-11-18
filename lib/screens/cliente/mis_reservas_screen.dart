@@ -24,8 +24,8 @@ class MisReservasScreen extends StatefulWidget {
   State<MisReservasScreen> createState() => _MisReservasScreenState();
 }
 
-/// Estado tal como lo ve el cliente (el backend solo distingue RETENIDA, CONFIRMADA y EXPIRADA).
-enum _Estado { porPagar, confirmada, usada, vencida }
+/// Estado tal como lo ve el cliente (el backend distingue RETENIDA, CONFIRMADA, EXPIRADA y CANCELADA).
+enum _Estado { porPagar, confirmada, usada, vencida, cancelada }
 
 enum _Filtro {
   todas('Todas'),
@@ -108,6 +108,8 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
         return expira != null && expira.isBefore(DateTime.now())
             ? _Estado.vencida
             : _Estado.porPagar;
+      case 'CANCELADA':
+        return _Estado.cancelada;
       default:
         return _Estado.vencida;
     }
@@ -123,9 +125,52 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
       case _Filtro.confirmadas:
         return e == _Estado.confirmada;
       case _Filtro.pasadas:
-        return e == _Estado.usada || e == _Estado.vencida;
+        return e == _Estado.usada ||
+            e == _Estado.vencida ||
+            e == _Estado.cancelada;
     }
   }).toList();
+
+  /// HU-10: pide confirmación y cancela; el servidor rechaza si ya pasó el tiempo límite.
+  Future<void> _cancelar(Map<String, dynamic> reserva) async {
+    final clienteId = SesionService.instancia.id;
+    if (clienteId == null) return;
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cancelar la reserva?'),
+        content: const Text('El cupo quedará libre y el código dejará de servir.'),
+        actions: [
+          TextButton(
+            key: const Key('noCancelar'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('No'),
+          ),
+          FilledButton(
+            key: const Key('siCancelar'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+    final resultado = await _reservaService.cancelar(
+      (reserva['id'] as num).toInt(),
+      clienteId,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          resultado['success'] == true
+              ? 'Reserva cancelada'
+              : '${resultado['error']}',
+        ),
+      ),
+    );
+    _cargar();
+  }
 
   Future<void> _pagar(Map<String, dynamic> reserva) async {
     await Navigator.of(context).push(
@@ -220,6 +265,9 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
                             onPagar: e == _Estado.porPagar
                                 ? () => _pagar(r)
                                 : null,
+                            onCancelar: e == _Estado.confirmada
+                                ? () => _cancelar(r)
+                                : null,
                             onCalificar:
                                 e == _Estado.usada && permiso?['puede'] == true
                                 ? () => _calificar(r)
@@ -244,12 +292,14 @@ class _TarjetaReserva extends StatelessWidget {
     required this.reserva,
     required this.estado,
     this.onPagar,
+    this.onCancelar,
     this.onCalificar,
     this.yaCalificado = false,
   });
   final Map<String, dynamic> reserva;
   final _Estado estado;
   final VoidCallback? onPagar;
+  final VoidCallback? onCancelar;
   final VoidCallback? onCalificar;
   final bool yaCalificado;
 
@@ -282,6 +332,13 @@ class _TarjetaReserva extends StatelessWidget {
           AppColors.error,
           AppColors.errorSuave,
           Icons.event_busy_outlined,
+        );
+      case _Estado.cancelada:
+        return (
+          'Cancelada',
+          AppColors.textoSuave,
+          AppColors.chip,
+          Icons.cancel_outlined,
         );
     }
   }
@@ -407,6 +464,17 @@ class _TarjetaReserva extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ],
+          if (onCancelar != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                key: Key('botonCancelar_${reserva['id']}'),
+                onPressed: onCancelar,
+                child: const Text('Cancelar reserva'),
               ),
             ),
           ],
