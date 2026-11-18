@@ -362,6 +362,9 @@ class _PagoScreenState extends State<PagoScreen> {
     final pago = _pago!;
     final aprobado = pago['estado'] == 'APROBADO';
     final codigo = pago['codigoReserva'];
+    // HU-08: al agotar los intentos el servidor cancela la reserva y libera el cupo
+    final cancelada = pago['reservaCancelada'] == true;
+    final restantes = pago['intentosRestantes'];
     return Column(
       children: [
         Expanded(
@@ -394,6 +397,22 @@ class _PagoScreenState extends State<PagoScreen> {
                         fontSize: 13,
                       ),
                     ),
+                    if (!aprobado) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        key: const Key('avisoIntentos'),
+                        cancelada
+                            ? 'Agotaste los intentos de pago. Tu reserva se canceló y el cupo quedó libre.'
+                            : restantes != null
+                            ? 'Te quedan $restantes ${restantes == 1 ? 'intento' : 'intentos'} para pagar esta reserva.'
+                            : '',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.error,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                     if (aprobado && codigo != null) ...[
                       const SizedBox(height: 20),
                       const Text(
@@ -446,10 +465,16 @@ class _PagoScreenState extends State<PagoScreen> {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           child: FilledButton(
             key: const Key('botonResultado'),
-            onPressed: () => aprobado
+            onPressed: () => aprobado || cancelada
                 ? Navigator.of(context).pop(pago)
                 : setState(() => _pago = null),
-            child: Text(aprobado ? 'Listo' : 'Intentar de nuevo'),
+            child: Text(
+              aprobado
+                  ? 'Listo'
+                  : cancelada
+                  ? 'Volver'
+                  : 'Intentar de nuevo',
+            ),
           ),
         ),
       ],

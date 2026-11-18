@@ -5,6 +5,8 @@ import 'package:parkfinder_app/services/pago_service.dart';
 
 /// Guarda lo que la pantalla le manda a la pasarela, sin red.
 class _PagoServiceFalso extends PagoService {
+  /// Si se da, el pago se rechaza con esta respuesta extra (intentosRestantes, reservaCancelada).
+  Map<String, dynamic>? rechazo;
   int llamadas = 0;
   String? medio;
   Map<String, String>? datos;
@@ -18,6 +20,19 @@ class _PagoServiceFalso extends PagoService {
     llamadas++;
     this.medio = medio;
     this.datos = datos;
+    if (rechazo != null) {
+      return {
+        'success': true,
+        'data': {
+          'estado': 'RECHAZADO',
+          'mensaje': 'Pago rechazado (simulado)',
+          'monto': 3000,
+          'detalle': 'Tarjeta **** 0000',
+          'referencia': 'SIM-XYZ',
+          ...rechazo!,
+        },
+      };
+    }
     return {
       'success': true,
       'data': {
@@ -160,5 +175,32 @@ void main() {
     await tester.pump();
     expect(servicio.llamadas, 1);
     expect(servicio.medio, 'NEQUI');
+  });
+
+  testWidgets('HU-08: un rechazo con intentos pendientes avisa cuántos quedan y deja reintentar', (tester) async {
+    final servicio = await montar(tester);
+    servicio.rechazo = {'intentosRestantes': 2, 'reservaCancelada': false};
+
+    await llenarTarjeta(tester);
+    await pagar(tester);
+    await tester.pump();
+
+    expect(find.text('Pago rechazado'), findsOneWidget);
+    expect(find.text('Te quedan 2 intentos para pagar esta reserva.'), findsOneWidget);
+    expect(find.text('Intentar de nuevo'), findsOneWidget);
+  });
+
+  testWidgets('HU-08: al agotar los intentos avisa que el cupo se liberó y ya no deja reintentar', (tester) async {
+    final servicio = await montar(tester);
+    servicio.rechazo = {'intentosRestantes': 0, 'reservaCancelada': true};
+
+    await llenarTarjeta(tester);
+    await pagar(tester);
+    await tester.pump();
+
+    expect(find.byKey(const Key('avisoIntentos')), findsOneWidget);
+    expect(find.textContaining('el cupo quedó libre'), findsOneWidget);
+    expect(find.text('Volver'), findsOneWidget);
+    expect(find.text('Intentar de nuevo'), findsNothing);
   });
 }

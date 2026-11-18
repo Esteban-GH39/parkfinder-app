@@ -534,6 +534,12 @@ class _TarjetaReserva extends StatelessWidget {
           fondo: AppColors.acentoSuave,
           color: AppColors.acento,
         );
+      case 'CANCELADA':
+        return const _Etiqueta(
+          texto: 'Cancelada',
+          fondo: AppColors.chip,
+          color: AppColors.textoSuave,
+        );
       default:
         return const _Etiqueta(
           texto: 'Expirada',
