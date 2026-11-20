@@ -6,6 +6,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
 import 'detalle_parqueadero_screen.dart';
 import 'login_screen.dart';
+import '../perfil/perfil_screen.dart';
 import 'mis_reservas_screen.dart';
 import 'reservar_screen.dart';
 
@@ -126,6 +127,12 @@ class _BuscarScreenState extends State<BuscarScreen> {
     );
   }
 
+  void _verPerfil() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PerfilScreen()),
+    );
+  }
+
   void _salir() {
     SesionService.instancia.cerrar();
     Navigator.of(context).pushAndRemoveUntil(
@@ -186,6 +193,21 @@ class _BuscarScreenState extends State<BuscarScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  Material(
+                    color: Colors.white,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      key: const Key('botonPerfil'),
+                      customBorder: const CircleBorder(),
+                      onTap: _verPerfil,
+                      child: const SizedBox(
+                        width: 46,
+                        height: 46,
+                        child: Icon(Icons.person_outline, size: 20),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Material(
                     color: Colors.white,
                     shape: const CircleBorder(),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/parqueadero.dart';
@@ -6,6 +7,7 @@ import '../../services/calificacion_service.dart';
 import '../../services/parqueadero_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
+import 'ruta_screen.dart';
 
 /// HU-05: detalle completo de un parqueadero.
 class DetalleParqueaderoScreen extends StatefulWidget {
@@ -199,6 +201,21 @@ class _DetalleParqueaderoScreenState extends State<DetalleParqueaderoScreen> {
     return '\$${s.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => '.')}';
   }
 
+  /// Mapa dentro de la app con la mejor ruta desde donde está el usuario.
+  void _comoLlegar(Parqueadero p) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RutaScreen(
+          nombre: p.nombre,
+          direccion: [p.direccion, if (p.zona.isNotEmpty) p.zona].join(', '),
+          destino: (p.latitud != null && p.longitud != null)
+              ? LatLng(p.latitud!, p.longitud!)
+              : null,
+        ),
+      ),
+    );
+  }
+
   Future<void> _abrirMapa(Parqueadero p) async {
     // Con coordenadas se usan; si no, se busca por dirección.
     // Supuesto: los parqueaderos están en Bogotá.
@@ -299,11 +316,22 @@ class _DetalleParqueaderoScreenState extends State<DetalleParqueaderoScreen> {
           icono: Icons.place_outlined,
           titulo: 'Ubicación',
           lineas: [p.direccion, 'Zona: ${p.zona.isEmpty ? '-' : p.zona}'],
-          accion: TextButton.icon(
-            key: const Key('botonVerMapa'),
-            onPressed: () => _abrirMapa(p),
-            icon: const Icon(Icons.map_outlined),
-            label: const Text('Ver en el mapa'),
+          accion: Wrap(
+            spacing: 4,
+            children: [
+              TextButton.icon(
+                key: const Key('botonComoLlegar'),
+                onPressed: () => _comoLlegar(p),
+                icon: const Icon(Icons.directions_outlined),
+                label: const Text('Cómo llegar'),
+              ),
+              TextButton.icon(
+                key: const Key('botonVerMapa'),
+                onPressed: () => _abrirMapa(p),
+                icon: const Icon(Icons.map_outlined),
+                label: const Text('Ver en Google Maps'),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),

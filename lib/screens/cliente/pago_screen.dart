@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../services/billetera_service.dart';
 import '../../services/pago_service.dart';
+import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
+import 'billetera_screen.dart';
+import 'medios_pago.dart';
 
 /// HU-07: elegir un medio de pago, llenar sus datos y pagar con la pasarela simulada.
 /// Se valida el formato de los datos (tarjeta de 16 dígitos, vencimiento, CVV...); con buen formato
@@ -14,12 +18,15 @@ class PagoScreen extends StatefulWidget {
     required this.reserva,
     required this.parqueadero,
     PagoService? pagoService,
-  }) : _pagoService = pagoService;
+    BilleteraService? billeteraService,
+  }) : _pagoService = pagoService,
+       _billeteraService = billeteraService;
 
   /// Reserva tal como la devuelve `POST /reservas`.
   final Map<String, dynamic> reserva;
   final Map<String, dynamic> parqueadero;
   final PagoService? _pagoService;
+  final BilleteraService? _billeteraService;
 
   @override
   State<PagoScreen> createState() => _PagoScreenState();
@@ -27,107 +34,43 @@ class PagoScreen extends StatefulWidget {
 
 const _costoPorDefecto = 3000;
 
-enum _Entrada { texto, numero, tarjeta, vencimiento, cvv }
-
-class _Medio {
-  const _Medio(this.codigo, this.nombre, this.icono, this.campos);
-  final String codigo;
-  final String nombre;
-  final IconData icono;
-  final List<_Campo> campos;
-}
-
-class _Campo {
-  const _Campo(
-    this.clave,
-    this.etiqueta,
-    this.validador, {
-    this.entrada = _Entrada.texto,
-  });
-  final String clave;
-  final String etiqueta;
-  final String? Function(String valor) validador;
-  final _Entrada entrada;
-}
-
-String? _requerido(String v) => v.trim().isEmpty ? 'Requerido' : null;
-
-String? _validarTarjeta(String v) {
-  final digitos = v.replaceAll(' ', '');
-  if (digitos.isEmpty) return 'Requerido';
-  return digitos.length == 16 ? null : 'Debe tener 16 dígitos';
-}
-
-/// El vencimiento llega como MM/AA (lo escribe el calendario); la tarjeta vale hasta fin de ese mes.
-String? _validarVencimiento(String v) {
-  final m = RegExp(r'^(\d{2})/(\d{2})$').firstMatch(v.trim());
-  if (m == null) return 'Elige la fecha de vencimiento';
-  final mes = int.parse(m.group(1)!);
-  final anio = 2000 + int.parse(m.group(2)!);
-  final hoy = DateTime.now();
-  if (mes < 1 || mes > 12 || DateTime(anio, mes + 1).isBefore(DateTime(hoy.year, hoy.month + 1))) {
-    return 'La tarjeta está vencida';
-  }
-  return null;
-}
-
-String? _validarCvv(String v) {
-  if (v.isEmpty) return 'Requerido';
-  return v.length >= 3 && v.length <= 4 ? null : 'Debe tener 3 o 4 dígitos';
-}
-
-String? _validarDocumento(String v) {
-  if (v.isEmpty) return 'Requerido';
-  return v.length >= 6 && v.length <= 10 ? null : 'Debe tener entre 6 y 10 dígitos';
-}
-
-String? _validarCelular(String v) {
-  if (v.isEmpty) return 'Requerido';
-  return RegExp(r'^3\d{9}$').hasMatch(v) ? null : 'Debe tener 10 dígitos y empezar por 3';
-}
-
-final _medios = <_Medio>[
-  _Medio('TARJETA', 'Tarjeta', Icons.credit_card, [
-    _Campo('numeroTarjeta', 'Número de tarjeta', _validarTarjeta, entrada: _Entrada.tarjeta),
-    _Campo('titular', 'Titular', _requerido),
-    _Campo('vencimiento', 'Vencimiento (MM/AA)', _validarVencimiento, entrada: _Entrada.vencimiento),
-    _Campo('cvv', 'CVV', _validarCvv, entrada: _Entrada.cvv),
-  ]),
-  _Medio('PSE', 'PSE', Icons.account_balance_outlined, [
-    _Campo('banco', 'Banco', _requerido),
-    _Campo('documento', 'Documento', _validarDocumento, entrada: _Entrada.numero),
-  ]),
-  _Medio('NEQUI', 'Nequi', Icons.phone_android, [
-    _Campo('celular', 'Celular', _validarCelular, entrada: _Entrada.numero),
-  ]),
-];
-
-/// Agrupa los dígitos de la tarjeta de 4 en 4 (máximo 16).
-class _FormatoTarjeta extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue anterior, TextEditingValue nuevo) {
-    final digitos = nuevo.text.replaceAll(RegExp(r'\D'), '');
-    final corto = digitos.length > 16 ? digitos.substring(0, 16) : digitos;
-    final texto = [
-      for (var i = 0; i < corto.length; i += 4)
-        corto.substring(i, i + 4 > corto.length ? corto.length : i + 4),
-    ].join(' ');
-    return TextEditingValue(
-      text: texto,
-      selection: TextSelection.collapsed(offset: texto.length),
-    );
-  }
-}
-
 class _PagoScreenState extends State<PagoScreen> {
   final _formKey = GlobalKey<FormState>();
   late final PagoService _servicio = widget._pagoService ?? PagoService();
+  late final BilleteraService _billetera =
+      widget._billeteraService ?? BilleteraService();
 
-  _Medio _medio = _medios.first;
+  /// Saldo de la billetera; null mientras carga o si no se pudo consultar.
+  int? _saldo;
+
+  MedioPagoUi _medio = mediosPago.first;
   final Map<String, TextEditingController> _controles = {};
   bool _cargando = false;
   String? _error;
   Map<String, dynamic>? _pago;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarSaldo();
+  }
+
+  Future<void> _cargarSaldo() async {
+    final id = SesionService.instancia.id;
+    if (id == null) return;
+    final saldo = await _billetera.saldo(id);
+    if (!mounted) return;
+    setState(() => _saldo = saldo);
+  }
+
+  Future<void> _recargar() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const BilleteraScreen()),
+    );
+    if (mounted) _cargarSaldo();
+  }
+
+  bool get _saldoNoAlcanza => _saldo != null && _saldo! < _monto;
 
   TextEditingController _control(String clave) =>
       _controles.putIfAbsent(clave, TextEditingController.new);
@@ -202,26 +145,26 @@ class _PagoScreenState extends State<PagoScreen> {
     );
   }
 
-  TextInputType _teclado(_Entrada e) => switch (e) {
-    _Entrada.texto => TextInputType.text,
+  TextInputType _teclado(EntradaPago e) => switch (e) {
+    EntradaPago.texto => TextInputType.text,
     _ => TextInputType.number,
   };
 
-  List<TextInputFormatter> _formatos(_Entrada e) => switch (e) {
-    _Entrada.tarjeta => [_FormatoTarjeta()],
-    _Entrada.cvv => [
+  List<TextInputFormatter> _formatos(EntradaPago e) => switch (e) {
+    EntradaPago.tarjeta => [FormatoTarjeta()],
+    EntradaPago.cvv => [
       FilteringTextInputFormatter.digitsOnly,
       LengthLimitingTextInputFormatter(4),
     ],
-    _Entrada.numero => [
+    EntradaPago.numero => [
       FilteringTextInputFormatter.digitsOnly,
       LengthLimitingTextInputFormatter(10),
     ],
     _ => const [],
   };
 
-  Widget _campo(_Campo campo) {
-    final esVencimiento = campo.entrada == _Entrada.vencimiento;
+  Widget _campo(CampoPago campo) {
+    final esVencimiento = campo.entrada == EntradaPago.vencimiento;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
@@ -229,7 +172,7 @@ class _PagoScreenState extends State<PagoScreen> {
         controller: _control(campo.clave),
         keyboardType: _teclado(campo.entrada),
         inputFormatters: _formatos(campo.entrada),
-        obscureText: campo.entrada == _Entrada.cvv,
+        obscureText: campo.entrada == EntradaPago.cvv,
         readOnly: esVencimiento,
         onTap: esVencimiento ? _elegirVencimiento : null,
         autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -303,7 +246,7 @@ class _PagoScreenState extends State<PagoScreen> {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          for (final medio in _medios) ...[
+                          for (final medio in mediosPago) ...[
                             _Pastilla(
                               key: Key('medio${medio.codigo}'),
                               medio: medio,
@@ -313,19 +256,60 @@ class _PagoScreenState extends State<PagoScreen> {
                                 _error = null;
                               }),
                             ),
-                            if (medio != _medios.last) const SizedBox(width: 8),
+                            if (medio != mediosPago.last) const SizedBox(width: 8),
                           ],
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _Pastilla(
+                            key: const Key('medioSALDO'),
+                            medio: medioSaldo,
+                            etiqueta: _saldo == null
+                                ? null
+                                : 'Mi saldo · \$${_miles(_saldo!)}',
+                            activa: _medio == medioSaldo,
+                            onTap: () => setState(() {
+                              _medio = medioSaldo;
+                              _error = null;
+                            }),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 18),
                       for (final campo in _medio.campos) _campo(campo),
-                      const Text(
-                        'Pasarela simulada: no se hace ningún cobro real.',
-                        style: TextStyle(
-                          color: AppColors.textoSuave,
-                          fontSize: 12,
+                      if (_medio == medioSaldo) ...[
+                        Text(
+                          _saldoNoAlcanza
+                              ? 'Tu saldo no alcanza para esta reserva.'
+                              : 'El valor se descuenta de tu saldo ParkFinder.',
+                          key: const Key('textoSaldo'),
+                          style: TextStyle(
+                            color: _saldoNoAlcanza
+                                ? AppColors.error
+                                : AppColors.textoSuave,
+                            fontSize: 12.5,
+                            fontWeight: _saldoNoAlcanza
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          key: const Key('botonRecargarDesdePago'),
+                          onPressed: _recargar,
+                          icon: const Icon(Icons.add_card_outlined),
+                          label: const Text('Recargar saldo'),
+                        ),
+                      ] else
+                        const Text(
+                          'Pasarela simulada: no se hace ningún cobro real.',
+                          style: TextStyle(
+                            color: AppColors.textoSuave,
+                            fontSize: 12,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -484,8 +468,10 @@ class _Pastilla extends StatelessWidget {
     required this.medio,
     required this.activa,
     required this.onTap,
+    this.etiqueta,
   });
-  final _Medio medio;
+  final MedioPagoUi medio;
+  final String? etiqueta;
   final bool activa;
   final VoidCallback onTap;
 
@@ -509,7 +495,7 @@ class _Pastilla extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                medio.nombre,
+                etiqueta ?? medio.nombre,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,

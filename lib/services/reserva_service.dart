@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
+import 'errores_api.dart';
 
 /// HU-06: reserva de un cupo con retención temporal.
 class ReservaService {
@@ -88,6 +89,26 @@ class ReservaService {
         'error': 'No se pudo conectar con el servidor. Intenta de nuevo.',
       };
     }
+  }
+
+  /// El cliente cancela una reserva confirmada que todavía no se usó (hasta cierto tiempo antes de la
+  /// llegada: lo valida el servidor). Devuelve `{success, data, reembolso}` (reembolso: pesos que volvieron
+  /// al saldo; 0 si el servidor no reembolsa) o `{success: false, error}`.
+  Future<Map<String, dynamic>> cancelar(int reservaId, int clienteId) async {
+    final r = await llamar(
+      () => http.post(
+        Uri.parse('${ApiConfig.baseUrl}/reservas/$reservaId/cancelar')
+            .replace(queryParameters: {'clienteId': '$clienteId'}),
+      ),
+      porDefecto: 'No se pudo cancelar la reserva',
+    );
+    if (r['success'] != true) return r;
+    final cabecera = (r['headers'] as Map<String, String>)['x-reembolso'];
+    return {
+      'success': true,
+      'data': r['data'],
+      'reembolso': int.tryParse(cabecera ?? '') ?? 0,
+    };
   }
 
   /// Consulta una reserva (cuántos carros y motos tiene). Devuelve `{success, data}` o `{success, error}`.
