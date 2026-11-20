@@ -4,6 +4,7 @@ import '../../services/calificacion_service.dart';
 import '../../services/reserva_service.dart';
 import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/formato.dart';
 import 'calificar_screen.dart';
 import 'pago_screen.dart';
 
@@ -25,7 +26,7 @@ class MisReservasScreen extends StatefulWidget {
 }
 
 /// Estado tal como lo ve el cliente (el backend solo distingue RETENIDA, CONFIRMADA y EXPIRADA).
-enum _Estado { porPagar, confirmada, usada, vencida }
+enum _Estado { porPagar, confirmada, usada, vencida, cancelada }
 
 enum _Filtro {
   todas('Todas'),
@@ -49,6 +50,9 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
   /// HU-13: por parqueadero, `{puede, yaCalifico}` (solo de los parqueaderos con reservas usadas).
   final Map<int, Map<String, dynamic>> _permisos = {};
   _Filtro _filtro = _Filtro.todas;
+
+  /// Reservas cuya cancelación está en curso (para no mandarla dos veces).
+  final Set<int> _cancelando = {};
   bool _cargando = true;
 
   @override
@@ -108,6 +112,8 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
         return expira != null && expira.isBefore(DateTime.now())
             ? _Estado.vencida
             : _Estado.porPagar;
+      case 'CANCELADA':
+        return _Estado.cancelada;
       default:
         return _Estado.vencida;
     }
@@ -123,9 +129,59 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
       case _Filtro.confirmadas:
         return e == _Estado.confirmada;
       case _Filtro.pasadas:
-        return e == _Estado.usada || e == _Estado.vencida;
+        return e == _Estado.usada ||
+            e == _Estado.vencida ||
+            e == _Estado.cancelada;
     }
   }).toList();
+
+  /// Pide confirmación y cancela. El servidor valida el plazo (hasta cierto tiempo antes de la llegada).
+  Future<void> _cancelar(Map<String, dynamic> reserva) async {
+    final clienteId = SesionService.instancia.id;
+    if (clienteId == null) return;
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cancelar la reserva?'),
+        content: Text(
+          'Vas a cancelar la reserva #${reserva['id']} en '
+          '${reserva['parqueaderoNombre'] ?? 'el parqueadero'}. El cupo se libera '
+          'y no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            key: const Key('botonMantenerReserva'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('No, mantenerla'),
+          ),
+          TextButton(
+            key: const Key('botonConfirmarCancelacion'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+    final id = (reserva['id'] as num).toInt();
+    setState(() => _cancelando.add(id));
+    final r = await _reservaService.cancelar(id, clienteId);
+    if (!mounted) return;
+    setState(() => _cancelando.remove(id));
+    final reembolso = (r['reembolso'] as num?)?.toInt() ?? 0;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          r['success'] == true
+              ? (reembolso > 0
+                    ? 'Reserva cancelada. Te devolvimos ${pesos(reembolso)} a tu saldo.'
+                    : 'Reserva cancelada.')
+              : '${r['error']}',
+        ),
+      ),
+    );
+    if (r['success'] == true) _cargar();
+  }
 
   Future<void> _pagar(Map<String, dynamic> reserva) async {
     await Navigator.of(context).push(
@@ -220,6 +276,12 @@ class _MisReservasScreenState extends State<MisReservasScreen> {
                             onPagar: e == _Estado.porPagar
                                 ? () => _pagar(r)
                                 : null,
+                            onCancelar: e == _Estado.confirmada
+                                ? () => _cancelar(r)
+                                : null,
+                            cancelando: _cancelando.contains(
+                              (r['id'] as num).toInt(),
+                            ),
                             onCalificar:
                                 e == _Estado.usada && permiso?['puede'] == true
                                 ? () => _calificar(r)
@@ -244,12 +306,16 @@ class _TarjetaReserva extends StatelessWidget {
     required this.reserva,
     required this.estado,
     this.onPagar,
+    this.onCancelar,
+    this.cancelando = false,
     this.onCalificar,
     this.yaCalificado = false,
   });
   final Map<String, dynamic> reserva;
   final _Estado estado;
   final VoidCallback? onPagar;
+  final VoidCallback? onCancelar;
+  final bool cancelando;
   final VoidCallback? onCalificar;
   final bool yaCalificado;
 
@@ -275,6 +341,13 @@ class _TarjetaReserva extends StatelessWidget {
           AppColors.textoSuave,
           AppColors.chip,
           Icons.task_alt_outlined,
+        );
+      case _Estado.cancelada:
+        return (
+          'Cancelada',
+          AppColors.textoSuave,
+          AppColors.chip,
+          Icons.cancel_outlined,
         );
       case _Estado.vencida:
         return (
@@ -407,6 +480,24 @@ class _TarjetaReserva extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ],
+          if (onCancelar != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: Key('botonCancelar_${reserva['id']}'),
+                onPressed: cancelando ? null : onCancelar,
+                icon: cancelando
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.event_busy_outlined),
+                label: const Text('Cancelar reserva'),
               ),
             ),
           ],

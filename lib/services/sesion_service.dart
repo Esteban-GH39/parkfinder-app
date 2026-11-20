@@ -28,6 +28,9 @@ class SesionService {
     this.adminId = adminId;
   }
 
+  /// Tras editar el perfil: el saludo de las pantallas usa este nombre.
+  void actualizarNombre(String nuevo) => nombre = nuevo;
+
   void cerrar() {
     id = null;
     nombre = null;

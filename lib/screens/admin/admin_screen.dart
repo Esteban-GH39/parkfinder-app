@@ -8,6 +8,7 @@ import '../../services/sesion_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/widgets_comunes.dart';
 import '../cliente/login_screen.dart';
+import '../perfil/perfil_screen.dart';
 import 'calificaciones_parqueadero_screen.dart';
 import 'editar_parqueadero_screen.dart';
 import 'gestion_cupos_parqueadero_screen.dart';
@@ -148,6 +149,12 @@ class _AdminScreenState extends State<AdminScreen> {
     if (mounted) _consultar();
   }
 
+  void _verPerfil() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PerfilScreen()),
+    );
+  }
+
   void _salir() {
     _sesion.cerrar();
     Navigator.of(context).pushAndRemoveUntil(
@@ -197,6 +204,21 @@ class _AdminScreenState extends State<AdminScreen> {
                     ],
                   ),
                 ),
+                Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    key: const Key('botonPerfil'),
+                    customBorder: const CircleBorder(),
+                    onTap: _verPerfil,
+                    child: const SizedBox(
+                      width: 46,
+                      height: 46,
+                      child: Icon(Icons.person_outline, size: 20),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Material(
                   color: Colors.white,
                   shape: const CircleBorder(),
